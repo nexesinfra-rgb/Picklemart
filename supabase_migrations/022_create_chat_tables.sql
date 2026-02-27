@@ -1,0 +1,194 @@
+-- Create Chat Conversations and Messages Tables
+-- Run this in Supabase SQL Editor
+
+-- Step 1: Create chat_conversations table
+CREATE TABLE IF NOT EXISTS PUBLIC.CHAT_CONVERSATIONS (
+    ID UUID PRIMARY KEY DEFAULT GEN_RANDOM_UUID(),
+    USER_ID UUID NOT NULL REFERENCES PUBLIC.PROFILES(ID) ON DELETE CASCADE,
+    ADMIN_ID UUID REFERENCES PUBLIC.PROFILES(ID) ON DELETE SET NULL,
+    STATUS TEXT NOT NULL DEFAULT 'active' 
+        CHECK (STATUS IN ('active', 'closed', 'archived')),
+    LAST_MESSAGE_AT TIMESTAMPTZ,
+    CREATED_AT TIMESTAMPTZ DEFAULT NOW(),
+    UPDATED_AT TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(USER_ID) -- Each user can only have one active conversation
+);
+
+-- Step 2: Create indexes for chat_conversations table
+CREATE INDEX IF NOT EXISTS IDX_CHAT_CONVERSATIONS_USER_ID ON PUBLIC.CHAT_CONVERSATIONS(USER_ID);
+CREATE INDEX IF NOT EXISTS IDX_CHAT_CONVERSATIONS_ADMIN_ID ON PUBLIC.CHAT_CONVERSATIONS(ADMIN_ID) WHERE ADMIN_ID IS NOT NULL;
+CREATE INDEX IF NOT EXISTS IDX_CHAT_CONVERSATIONS_STATUS ON PUBLIC.CHAT_CONVERSATIONS(STATUS);
+CREATE INDEX IF NOT EXISTS IDX_CHAT_CONVERSATIONS_LAST_MESSAGE_AT ON PUBLIC.CHAT_CONVERSATIONS(LAST_MESSAGE_AT DESC);
+
+-- Step 3: Create chat_messages table
+CREATE TABLE IF NOT EXISTS PUBLIC.CHAT_MESSAGES (
+    ID UUID PRIMARY KEY DEFAULT GEN_RANDOM_UUID(),
+    CONVERSATION_ID UUID NOT NULL REFERENCES PUBLIC.CHAT_CONVERSATIONS(ID) ON DELETE CASCADE,
+    SENDER_ID UUID NOT NULL REFERENCES PUBLIC.PROFILES(ID) ON DELETE CASCADE,
+    SENDER_ROLE TEXT NOT NULL CHECK (SENDER_ROLE IN ('user', 'admin', 'manager', 'support')),
+    MESSAGE_TYPE TEXT NOT NULL DEFAULT 'text' CHECK (MESSAGE_TYPE IN ('text', 'image', 'product')),
+    CONTENT TEXT, -- For text messages
+    IMAGE_URL TEXT, -- For image messages
+    PRODUCT_ID UUID REFERENCES PUBLIC.PRODUCTS(ID) ON DELETE SET NULL, -- For product messages
+    READ_AT TIMESTAMPTZ, -- When the message was read by the recipient
+    CREATED_AT TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Step 4: Create indexes for chat_messages table
+CREATE INDEX IF NOT EXISTS IDX_CHAT_MESSAGES_CONVERSATION_ID ON PUBLIC.CHAT_MESSAGES(CONVERSATION_ID);
+CREATE INDEX IF NOT EXISTS IDX_CHAT_MESSAGES_SENDER_ID ON PUBLIC.CHAT_MESSAGES(SENDER_ID);
+CREATE INDEX IF NOT EXISTS IDX_CHAT_MESSAGES_CREATED_AT ON PUBLIC.CHAT_MESSAGES(CREATED_AT);
+CREATE INDEX IF NOT EXISTS IDX_CHAT_MESSAGES_PRODUCT_ID ON PUBLIC.CHAT_MESSAGES(PRODUCT_ID) WHERE PRODUCT_ID IS NOT NULL;
+
+-- Step 5: Create trigger function to update last_message_at on conversations
+CREATE OR REPLACE FUNCTION PUBLIC.UPDATE_CHAT_CONVERSATION_LAST_MESSAGE()
+RETURNS TRIGGER AS $$
+BEGIN
+    UPDATE PUBLIC.CHAT_CONVERSATIONS
+    SET LAST_MESSAGE_AT = NEW.CREATED_AT,
+        UPDATED_AT = NOW()
+    WHERE ID = NEW.CONVERSATION_ID;
+    RETURN NEW;
+END;
+$$ LANGUAGE PLPGSQL;
+
+-- Step 6: Create trigger to update last_message_at when new message is inserted
+DROP TRIGGER IF EXISTS TRIGGER_UPDATE_CHAT_CONVERSATION_LAST_MESSAGE ON PUBLIC.CHAT_MESSAGES;
+CREATE TRIGGER TRIGGER_UPDATE_CHAT_CONVERSATION_LAST_MESSAGE
+    AFTER INSERT ON PUBLIC.CHAT_MESSAGES
+    FOR EACH ROW
+    EXECUTE FUNCTION PUBLIC.UPDATE_CHAT_CONVERSATION_LAST_MESSAGE();
+
+-- Step 7: Create updated_at trigger function (if not exists)
+CREATE OR REPLACE FUNCTION PUBLIC.HANDLE_UPDATED_AT()
+RETURNS TRIGGER AS
+$$
+BEGIN
+    NEW.UPDATED_AT = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE PLPGSQL;
+
+-- Step 8: Create trigger for updated_at on chat_conversations table
+DROP TRIGGER IF EXISTS SET_UPDATED_AT_CHAT_CONVERSATIONS ON PUBLIC.CHAT_CONVERSATIONS;
+CREATE TRIGGER SET_UPDATED_AT_CHAT_CONVERSATIONS
+    BEFORE UPDATE ON PUBLIC.CHAT_CONVERSATIONS
+    FOR EACH ROW
+    EXECUTE FUNCTION PUBLIC.HANDLE_UPDATED_AT();
+
+-- Step 9: Enable Row Level Security (RLS)
+ALTER TABLE PUBLIC.CHAT_CONVERSATIONS ENABLE ROW LEVEL SECURITY;
+ALTER TABLE PUBLIC.CHAT_MESSAGES ENABLE ROW LEVEL SECURITY;
+
+-- Step 10: Create RLS policies for chat_conversations table
+
+-- Users can SELECT their own conversations
+DROP POLICY IF EXISTS "Users can view their own conversations" ON PUBLIC.CHAT_CONVERSATIONS;
+CREATE POLICY "Users can view their own conversations" ON PUBLIC.CHAT_CONVERSATIONS
+    FOR SELECT
+    USING (AUTH.UID() = USER_ID);
+
+-- Users can INSERT their own conversations
+DROP POLICY IF EXISTS "Users can create their own conversations" ON PUBLIC.CHAT_CONVERSATIONS;
+CREATE POLICY "Users can create their own conversations" ON PUBLIC.CHAT_CONVERSATIONS
+    FOR INSERT
+    WITH CHECK (AUTH.UID() = USER_ID);
+
+-- Users can UPDATE their own conversations
+DROP POLICY IF EXISTS "Users can update their own conversations" ON PUBLIC.CHAT_CONVERSATIONS;
+CREATE POLICY "Users can update their own conversations" ON PUBLIC.CHAT_CONVERSATIONS
+    FOR UPDATE
+    USING (AUTH.UID() = USER_ID)
+    WITH CHECK (AUTH.UID() = USER_ID);
+
+-- Admins can SELECT all conversations
+DROP POLICY IF EXISTS "Admins can view all conversations" ON PUBLIC.CHAT_CONVERSATIONS;
+CREATE POLICY "Admins can view all conversations" ON PUBLIC.CHAT_CONVERSATIONS
+    FOR SELECT
+    USING (PUBLIC.IS_ADMIN(AUTH.UID()));
+
+-- Admins can UPDATE all conversations
+DROP POLICY IF EXISTS "Admins can update all conversations" ON PUBLIC.CHAT_CONVERSATIONS;
+CREATE POLICY "Admins can update all conversations" ON PUBLIC.CHAT_CONVERSATIONS
+    FOR UPDATE
+    USING (PUBLIC.IS_ADMIN(AUTH.UID()))
+    WITH CHECK (PUBLIC.IS_ADMIN(AUTH.UID()));
+
+-- Step 11: Create RLS policies for chat_messages table
+
+-- Users can SELECT messages in their own conversations
+DROP POLICY IF EXISTS "Users can view messages in their conversations" ON PUBLIC.CHAT_MESSAGES;
+CREATE POLICY "Users can view messages in their conversations" ON PUBLIC.CHAT_MESSAGES
+    FOR SELECT
+    USING (
+        EXISTS (
+            SELECT 1
+            FROM PUBLIC.CHAT_CONVERSATIONS
+            WHERE CHAT_CONVERSATIONS.ID = CHAT_MESSAGES.CONVERSATION_ID
+            AND CHAT_CONVERSATIONS.USER_ID = AUTH.UID()
+        )
+    );
+
+-- Users can INSERT messages in their own conversations
+DROP POLICY IF EXISTS "Users can create messages in their conversations" ON PUBLIC.CHAT_MESSAGES;
+CREATE POLICY "Users can create messages in their conversations" ON PUBLIC.CHAT_MESSAGES
+    FOR INSERT
+    WITH CHECK (
+        EXISTS (
+            SELECT 1
+            FROM PUBLIC.CHAT_CONVERSATIONS
+            WHERE CHAT_CONVERSATIONS.ID = CHAT_MESSAGES.CONVERSATION_ID
+            AND CHAT_CONVERSATIONS.USER_ID = AUTH.UID()
+        )
+        AND SENDER_ID = AUTH.UID()
+    );
+
+-- Users can UPDATE messages they sent (for read receipts)
+DROP POLICY IF EXISTS "Users can update their own messages" ON PUBLIC.CHAT_MESSAGES;
+CREATE POLICY "Users can update their own messages" ON PUBLIC.CHAT_MESSAGES
+    FOR UPDATE
+    USING (SENDER_ID = AUTH.UID())
+    WITH CHECK (SENDER_ID = AUTH.UID());
+
+-- Admins can SELECT all messages
+DROP POLICY IF EXISTS "Admins can view all messages" ON PUBLIC.CHAT_MESSAGES;
+CREATE POLICY "Admins can view all messages" ON PUBLIC.CHAT_MESSAGES
+    FOR SELECT
+    USING (PUBLIC.IS_ADMIN(AUTH.UID()));
+
+-- Admins can INSERT messages in any conversation
+DROP POLICY IF EXISTS "Admins can create messages in any conversation" ON PUBLIC.CHAT_MESSAGES;
+CREATE POLICY "Admins can create messages in any conversation" ON PUBLIC.CHAT_MESSAGES
+    FOR INSERT
+    WITH CHECK (
+        PUBLIC.IS_ADMIN(AUTH.UID())
+        AND SENDER_ID = AUTH.UID()
+    );
+
+-- Admins can UPDATE messages (for read receipts)
+DROP POLICY IF EXISTS "Admins can update messages" ON PUBLIC.CHAT_MESSAGES;
+CREATE POLICY "Admins can update messages" ON PUBLIC.CHAT_MESSAGES
+    FOR UPDATE
+    USING (PUBLIC.IS_ADMIN(AUTH.UID()))
+    WITH CHECK (PUBLIC.IS_ADMIN(AUTH.UID()));
+
+-- Step 12: Add comments to tables
+COMMENT ON TABLE PUBLIC.CHAT_CONVERSATIONS IS 'Stores chat conversations between users and admin. Each user can have one active conversation.';
+COMMENT ON TABLE PUBLIC.CHAT_MESSAGES IS 'Stores individual messages in chat conversations. Supports text, image, and product message types.';
+
+-- Step 13: Verify tables were created
+SELECT
+    '✅ Chat tables created successfully' AS STATUS,
+    (
+        SELECT COUNT(*)
+        FROM INFORMATION_SCHEMA.TABLES
+        WHERE TABLE_SCHEMA = 'public'
+        AND TABLE_NAME = 'chat_conversations'
+    ) AS CONVERSATIONS_TABLE_EXISTS,
+    (
+        SELECT COUNT(*)
+        FROM INFORMATION_SCHEMA.TABLES
+        WHERE TABLE_SCHEMA = 'public'
+        AND TABLE_NAME = 'chat_messages'
+    ) AS MESSAGES_TABLE_EXISTS;
+

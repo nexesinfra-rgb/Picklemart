@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SM Flutter Project - Interactive Code Map</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 30px;
+            border-radius: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .controls {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #48bb78;
+            color: white;
+        }
+
+        .btn-info {
+            background: #4299e1;
+            color: white;
+        }
+
+        .btn.active {
+            background: #764ba2;
+            color: white;
+        }
+
+        .view-container {
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: 20px;
+            padding: 30px;
+            min-height: 600px;
+            box-shadow: 0 10px 50px rgba(0, 0, 0, 0.15);
+        }
+
+        .architecture-view {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .layer-box {
+            background: linear-gradient(135deg, #f6f8fb 0%, #e9ecef 100%);
+            border-radius: 15px;
+            padding: 25px;
+            border-left: 5px solid;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .layer-box:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+        }
+
+        .layer-box.presentation { border-color: #667eea; }
+        .layer-box.application { border-color: #48bb78; }
+        .layer-box.domain { border-color: #ed8936; }
+        .layer-box.data { border-color: #4299e1; }
+        .layer-box.core { border-color: #9f7aea; }
+
+        .layer-title {
+            font-size: 1.4em;
+            font-weight: 700;
+            margin-bottom: 15px;
+            color: #2d3748;
+        }
+
+        .layer-items {
+            list-style: none;
+        }
+
+        .layer-items li {
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            font-size: 0.95em;
+            color: #4a5568;
+            transition: all 0.2s ease;
+        }
+
+        .layer-items li:hover {
+            padding-left: 10px;
+            color: #667eea;
+        }
+
+        .dependency-graph {
+            position: relative;
+            height: 700px;
+            background: #f7fafc;
+            border-radius: 15px;
+            overflow: hidden;
+        }
+
+        .module-node {
+            position: absolute;
+            background: white;
+            border-radius: 12px;
+            padding: 15px 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 3px solid;
+            min-width: 140px;
+            text-align: center;
+        }
+
+        .module-node:hover {
+            transform: scale(1.1);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+            z-index: 100;
+        }
+
+        .module-node.auth { border-color: #667eea; top: 50px; left: 50px; }
+        .module-node.home { border-color: #48bb78; top: 50px; left: 250px; }
+        .module-node.catalog { border-color: #ed8936; top: 50px; left: 450px; }
+        .module-node.cart { border-color: #4299e1; top: 200px; left: 150px; }
+        .module-node.orders { border-color: #9f7aea; top: 200px; left: 350px; }
+        .module-node.profile { border-color: #f56565; top: 350px; left: 50px; }
+        .module-node.admin { border-color: #38b2ac; top: 350px; left: 250px; }
+        .module-node.core { border-color: #fc8181; top: 500px; left: 150px; }
+
+        .module-title {
+            font-weight: 700;
+            font-size: 1.1em;
+            margin-bottom: 5px;
+        }
+
+        .module-files {
+            font-size: 0.8em;
+            color: #718096;
+        }
+
+        .connection-line {
+            position: absolute;
+            background: #cbd5e0;
+            height: 2px;
+            transform-origin: left center;
+            pointer-events: none;
+            opacity: 0.5;
+        }
+
+        .file-tree {
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            line-height: 1.8;
+        }
+
+        .tree-item {
+            padding: 5px 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border-radius: 5px;
+        }
+
+        .tree-item:hover {
+            background: #edf2f7;
+            padding-left: 15px;
+        }
+
+        .tree-folder {
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .tree-file {
+            color: #4a5568;
+        }
+
+        .tree-indent {
+            display: inline-block;
+            width: 20px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .stat-value {
+            font-size: 2.5em;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 0.95em;
+            opacity: 0.9;
+        }
+
+        .route-map {
+            background: #f7fafc;
+            padding: 20px;
+            border-radius: 15px;
+            margin-top: 20px;
+        }
+
+        .route-item {
+            background: white;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+            transition: all 0.2s ease;
+        }
+
+        .route-item:hover {
+            transform: translateX(10px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .route-path {
+            font-family: 'Courier New', monospace;
+            color: #667eea;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .route-screen {
+            color: #718096;
+            font-size: 0.9em;
+        }
+
+        .legend {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+            padding: 15px;
+            background: #f7fafc;
+            border-radius: 10px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 5px;
+        }
+
+        .search-box {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 1em;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .search-box:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="fade-in">
+            <h1>🗺️ SM Flutter Project - Interactive Code Map</h1>
+            <p class="subtitle">Comprehensive visualization of project architecture, dependencies, and structure</p>
+        </header>
+
+        <div class="controls fade-in">
+            <button class="btn btn-primary active" onclick="showView('architecture')">📐 Architecture</button>
+            <button class="btn btn-primary" onclick="showView('dependencies')">🔗 Dependencies</button>
+            <button class="btn btn-primary" onclick="showView('routes')">🛣️ Routes</button>
+            <button class="btn btn-primary" onclick="showView('files')">📁 File Structure</button>
+            <button class="btn btn-primary" onclick="showView('stats')">📊 Statistics</button>
+            <button class="btn btn-secondary" onclick="exportData()">💾 Export Data</button>
+            <button class="btn btn-info" onclick="showHelp()">❓ Help</button>
+        </div>
+
+        <div class="view-container">
+            <!-- Architecture View -->
+            <div id="architecture-view" class="architecture-view">
+                <div class="layer-box presentation">
+                    <div class="layer-title">🎨 Presentation Layer</div>
+                    <ul class="layer-items">
+                        <li>Home Screen</li>
+                        <li>Auth Screens (Login, Signup, Role Selection)</li>
+                        <li>Product Screens (Detail, Browse, Search)</li>
+                        <li>Cart & Checkout Screens</li>
+                        <li>Profile Screens</li>
+                        <li>Admin Dashboard & Screens</li>
+                        <li>Order Screens</li>
+                    </ul>
+                </div>
+
+                <div class="layer-box application">
+                    <div class="layer-title">⚙️ Application Layer</div>
+                    <ul class="layer-items">
+                        <li>Auth Controller</li>
+                        <li>Cart Controller</li>
+                        <li>Order Controller</li>
+                        <li>Profile Controller</li>
+                        <li>Admin Controllers (Dashboard, Products, Orders, etc.)</li>
+                        <li>Analytics Controller</li>
+                    </ul>
+                </div>
+
+                <div class="layer-box domain">
+                    <div class="layer-title">💼 Domain Layer</div>
+                    <ul class="layer-items">
+                        <li>Product Models</li>
+                        <li>Order Models</li>
+                        <li>User Models</li>
+                        <li>Address Models</li>
+                        <li>Analytics Models</li>
+                        <li>Customer Browsing Analytics</li>
+                    </ul>
+                </div>
+
+                <div class="layer-box data">
+                    <div class="layer-title">💾 Data Layer</div>
+                    <ul class="layer-items">
+                        <li>Product Repository</li>
+                        <li>Order Repository</li>
+                        <li>User Repository</li>
+                        <li>Address Repository</li>
+                        <li>Mock Data</li>
+                        <li>Appwrite Provider</li>
+                    </ul>
+                </div>
+
+                <div class="layer-box core">
+                    <div class="layer-title">🔧 Core Layer</div>
+                    <ul class="layer-items">
+                        <li>App Router (GoRouter)</li>
+                        <li>Theme (Material 3)</li>
+                        <li>Responsive Layout</li>
+                        <li>App Scaffold</li>
+                        <li>Splash Service</li>
+                        <li>URL Launcher Service</li>
+                        <li>Settings Provider</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Dependencies View -->
+            <div id="dependencies-view" class="dependency-graph hidden">
+                <div class="module-node auth">
+                    <div class="module-title">Auth</div>
+                    <div class="module-files">4 screens, 1 controller</div>
+                </div>
+                <div class="module-node home">
+                    <div class="module-title">Home</div>
+                    <div class="module-files">1 screen, 7 widgets</div>
+                </div>
+                <div class="module-node catalog">
+                    <div class="module-title">Catalog</div>
+                    <div class="module-files">6 screens, 13 widgets</div>
+                </div>
+                <div class="module-node cart">
+                    <div class="module-title">Cart</div>
+                    <div class="module-files">3 screens, 1 controller</div>
+                </div>
+                <div class="module-node orders">
+                    <div class="module-title">Orders</div>
+                    <div class="module-files">3 screens, 1 controller</div>
+                </div>
+                <div class="module-node profile">
+                    <div class="module-title">Profile</div>
+                    <div class="module-files">5 screens, 1 controller</div>
+                </div>
+                <div class="module-node admin">
+                    <div class="module-title">Admin</div>
+                    <div class="module-files">17 screens, 11 controllers</div>
+                </div>
+                <div class="module-node core">
+                    <div class="module-title">Core</div>
+                    <div class="module-files">Router, Theme, Services</div>
+                </div>
+            </div>
+
+            <!-- Routes View -->
+            <div id="routes-view" class="hidden">
+                <input type="text" class="search-box" id="route-search" placeholder="Search routes..." onkeyup="filterRoutes()">
+                <div id="routes-container" class="route-map">
+                    <!-- Public Routes -->
+                    <div class="route-item">
+                        <div class="route-path">/splash</div>
+                        <div class="route-screen">→ SplashScreen</div>
+                    </div>
+                    <div class="route-item">
+                        <div class="route-path">/</div>
+                        <div class="route-screen">→ RoleSelectionScreen</div>
+                    </div>
+                    <div class="route-item">
+                        <div class="route-path">/login</div>
+                        <div class="route-screen">→ LoginScreen</div>
+                    </div>
+                    <div class="route-item">
+                        <div class="route-path">/signup</div>
+                        <div class="route-screen">→ SignupScreen</div>
+                    </div>
+                    
+                    <!-- Customer Routes (Shell) -->
+                    <div class="route-item">
+                        <div class="route-path">/home</div>
+                        <div class="route-screen">→ HomeScreen (in AppScaffold)</div>
+                    </div>
+                    <div class="route-item">
+                        <div class="route-path">/catalog</div>
+                        <div class="route-screen">→ CategoriesScreen (in AppScaffold)</div>
+                    </div>
+                    <div class="route-item">
+                        <div class="route-path">/cart</div>
+                        <div class="route-screen">→ CartScreen (in AppScaffold)</div>
+                    </div>
+                    <div class="route-item">
+                        <div class="route-path">/orders</div>
+                        <div class="route-screen">→ OrdersListScreen (in AppScaffold)</div>
+                    </div>
+                    <div class="route-item">
+                        <div class="route-path">/profile</div>
+                        <div class="route-screen">→ ProfileScreen (in AppScaffold)</div>
+                    </div>
+                    
+                    <!-- Admin Routes -->
+                    <div class="route-item">
+                        <div class="route-path">/admin/login</div>
+                        <div class="route-screen">→ AdminLoginScreen</div>
+                    </div>
+                    <div class="route-item">
+                        <div class="route-path">/admin/dashboard</div>
+                        <div class="route-screen">→ AdminDashboardScreen</div>
+                    </div>
+                    <div class="route-item">
+                        <div class="route-path">/admin/products</div>
+                        <div class="route-screen">→ AdminProductsScreen</div>
+                    </div>
+                    <div class="route-item">
+                        <div class="route-path">/admin/orders</div>
+                        <div class="route-screen">→ AdminOrdersScreen</div>
+                    </div>
+                    <div class="route-item">
+                        <div class="route-path">/admin/analytics</div>
+                        <div class="route-screen">→ AdminAnalyticsScreen</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- File Structure View -->
+            <div id="files-view" class="hidden">
+                <input type="text" class="search-box" id="file-search" placeholder="Search files..." onkeyup="filterFiles()">
+                <div id="files-container" class="file-tree">
+                    <div class="tree-item tree-folder" onclick="toggleFolder(this)">📁 lib/</div>
+                    <div class="tree-item"><span class="tree-indent">└─</span> 📄 main.dart</div>
+                    <div class="tree-item tree-folder" onclick="toggleFolder(this)"><span class="tree-indent">└─</span> 📁 core/</div>
+                    <div class="tree-item"><span class="tree-indent">  └─</span> 📁 config/</div>
+                    <div class="tree-item"><span class="tree-indent">  └─</span> 📁 layout/</div>
+                    <div class="tree-item"><span class="tree-indent">  └─</span> 📁 providers/</div>
+                    <div class="tree-item"><span class="tree-indent">  └─</span> 📁 router/</div>
+                    <div class="tree-item"><span class="tree-indent">  └─</span> 📁 services/</div>
+                    <div class="tree-item"><span class="tree-indent">  └─</span> 📁 theme/</div>
+                    <div class="tree-item"><span class="tree-indent">  └─</span> 📁 ui/</div>
+                    <div class="tree-item tree-folder" onclick="toggleFolder(this)"><span class="tree-indent">└─</span> 📁 features/</div>
+                    <div class="tree-item"><span class="tree-indent">  └─</span> 📁 admin/ (17 screens, 11 controllers)</div>
+                    <div class="tree-item"><span class="tree-indent">  └─</span> 📁 auth/ (4 screens, 1 controller)</div>
+                    <div class="tree-item"><span class="tree-indent">  └─</span> 📁 cart/ (3 screens, 1 controller)</div>
+                    <div class="tree-item"><span class="tree-indent">  └─</span> 📁 catalog/ (6 screens, 13 widgets)</div>
+                    <div class="tree-item"><span class="tree-indent">  └─</span> 📁 home/ (1 screen, 7 widgets)</div>
+                    <div class="tree-item"><span class="tree-indent">  └─</span> 📁 orders/ (3 screens, 1 controller)</div>
+                    <div class="tree-item"><span class="tree-indent">  └─</span> 📁 profile/ (5 screens, 1 controller)</div>
+                    <div class="tree-item tree-folder" onclick="toggleFolder(this)"><span class="tree-indent">└─</span> 📁 data/</div>
+                    <div class="tree-item"><span class="tree-indent">  └─</span> 📄 mock_data.dart</div>
+                </div>
+                
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #667eea;"></div>
+                        <span>Presentation</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #48bb78;"></div>
+                        <span>Application</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #ed8936;"></div>
+                        <span>Domain</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #4299e1;"></div>
+                        <span>Data</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #9f7aea;"></div>
+                        <span>Core</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statistics View -->
+            <div id="stats-view" class="hidden">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value">7</div>
+                        <div class="stat-label">Feature Modules</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">42+</div>
+                        <div class="stat-label">Screens</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">17</div>
+                        <div class="stat-label">Controllers</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">30+</div>
+                        <div class="stat-label">Routes</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">8</div>
+                        <div class="stat-label">Dependencies</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">150+</div>
+                        <div class="stat-label">Source Files</div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 30px; background: #f7fafc; padding: 25px; border-radius: 15px;">
+                    <h2 style="margin-bottom: 20px; color: #2d3748;">📦 Key Dependencies</h2>
+                    <ul style="list-style: none; line-height: 2;">
+                        <li>✅ <strong>flutter_riverpod</strong> ^2.5.1 - State Management</li>
+                        <li>✅ <strong>go_router</strong> ^14.2.7 - Navigation</li>
+                        <li>✅ <strong>appwrite</strong> ^12.0.0 - Backend Services</li>
+                        <li>✅ <strong>google_fonts</strong> ^6.2.1 - Typography</li>
+                        <li>✅ <strong>flutter_map</strong> ^7.0.2 - Maps Integration</li>
+                        <li>✅ <strong>geolocator</strong> ^9.0.2 - Location Services</li>
+                        <li>✅ <strong>image_picker</strong> ^1.0.7 - Image Selection</li>
+                        <li>✅ <strong>intl</strong> ^0.19.0 - Internationalization</li>
+                    </ul>
+                </div>
+
+                <div style="margin-top: 30px; background: #f7fafc; padding: 25px; border-radius: 15px;">
+                    <h2 style="margin-bottom: 20px; color: #2d3748;">🏗️ Architecture Patterns</h2>
+                    <ul style="list-style: none; line-height: 2;">
+                        <li>🎯 <strong>Clean Architecture</strong> - Separation of concerns with layers</li>
+                        <li>🎯 <strong>Feature-First</strong> - Organized by business features</li>
+                        <li>🎯 <strong>Provider Pattern</strong> - State management with Riverpod</li>
+                        <li>🎯 <strong>Repository Pattern</strong> - Data abstraction layer</li>
+                        <li>🎯 <strong>Responsive Design</strong> - Adaptive layouts for all devices</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showView(viewName) {
+            // Hide all views
+            const views = ['architecture-view', 'dependencies-view', 'routes-view', 'files-view', 'stats-view'];
+            views.forEach(v => {
+                document.getElementById(v).classList.add('hidden');
+            });
+
+            // Show selected view
+            document.getElementById(viewName + '-view').classList.remove('hidden');
+
+            // Update button states
+            document.querySelectorAll('.btn-primary').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+        }
+
+        function filterRoutes() {
+            const searchTerm = document.getElementById('route-search').value.toLowerCase();
+            const routes = document.querySelectorAll('#routes-container .route-item');
+            
+            routes.forEach(route => {
+                const text = route.textContent.toLowerCase();
+                route.style.display = text.includes(searchTerm) ? 'block' : 'none';
+            });
+        }
+
+        function filterFiles() {
+            const searchTerm = document.getElementById('file-search').value.toLowerCase();
+            const files = document.querySelectorAll('#files-container .tree-item');
+            
+            files.forEach(file => {
+                const text = file.textContent.toLowerCase();
+                file.style.display = text.includes(searchTerm) ? 'block' : 'none';
+            });
+        }
+
+        function toggleFolder(element) {
+            element.classList.toggle('tree-folder');
+            // Simple toggle effect
+            const nextSibling = element.nextElementSibling;
+            if (nextSibling) {
+                nextSibling.style.display = nextSibling.style.display === 'none' ? 'block' : 'none';
+            }
+        }
+
+        function exportData() {
+            const data = {
+                project: 'SM Flutter Project',
+                modules: ['auth', 'home', 'catalog', 'cart', 'orders', 'profile', 'admin'],
+                screens: 42,
+                controllers: 17,
+                routes: 30,
+                dependencies: [
+                    'flutter_riverpod',
+                    'go_router',
+                    'appwrite',
+                    'google_fonts',
+                    'flutter_map',
+                    'geolocator',
+                    'image_picker',
+                    'intl'
+                ]
+            };
+            
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'sm_project_structure.json';
+            a.click();
+        }
+
+        function showHelp() {
+            alert(`Interactive Code Map Help:
+
+📐 Architecture - View the layered architecture (Presentation, Application, Domain, Data, Core)
+🔗 Dependencies - See module dependencies and relationships
+🛣️ Routes - Explore all application routes and navigation paths
+📁 File Structure - Browse the complete file tree
+📊 Statistics - View project metrics and key dependencies
+
+💡 Tips:
+- Click on layer boxes to see details
+- Hover over nodes to highlight connections
+- Use search boxes to filter routes and files
+- Export data for external analysis`);
+        }
+
+        // Initialize with animation
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.layer-box').forEach((box, index) => {
+                box.style.animationDelay = `${index * 0.1}s`;
+                box.classList.add('fade-in');
+            });
+        });
+    </script>
+</body>
+</html>

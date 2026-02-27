@@ -1,0 +1,99 @@
+-- Create profiles table
+CREATE TABLE IF NOT EXISTS PUBLIC.PROFILES (
+    ID UUID PRIMARY KEY REFERENCES AUTH.USERS(ID) ON DELETE CASCADE,
+    NAME TEXT NOT NULL,
+    EMAIL TEXT,
+    MOBILE TEXT,
+    DISPLAY_MOBILE TEXT,
+    AVATAR_URL TEXT,
+    ROLE TEXT DEFAULT 'user' CHECK (ROLE IN ('user', 'admin', 'manager', 'support')),
+    GENDER TEXT CHECK (GENDER IN ('male', 'female', 'others', 'prefer_not_to_say')),
+    DATE_OF_BIRTH DATE,
+    CREATED_AT TIMESTAMPTZ DEFAULT NOW(),
+    UPDATED_AT TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Create indexes for better query performance
+CREATE INDEX IF NOT EXISTS IDX_PROFILES_EMAIL ON PUBLIC.PROFILES(EMAIL);
+
+CREATE INDEX IF NOT EXISTS IDX_PROFILES_MOBILE ON PUBLIC.PROFILES(MOBILE);
+
+CREATE INDEX IF NOT EXISTS IDX_PROFILES_ROLE ON PUBLIC.PROFILES(ROLE);
+
+-- Enable Row Level Security
+ALTER TABLE PUBLIC.PROFILES ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policy: Users can SELECT their own profile
+CREATE POLICY PROFILES_SELECT_OWN ON PUBLIC.PROFILES
+  FOR SELECT
+  USING (AUTH.UID() = ID);
+
+-- RLS Policy: Users can INSERT their own profile
+CREATE POLICY PROFILES_INSERT_OWN ON PUBLIC.PROFILES
+  FOR INSERT
+  WITH CHECK (AUTH.UID() = ID);
+
+-- RLS Policy: Users can UPDATE their own profile
+CREATE POLICY PROFILES_UPDATE_OWN ON PUBLIC.PROFILES
+  FOR UPDATE
+  USING (AUTH.UID() = ID)
+  WITH CHECK (AUTH.UID() = ID);
+
+-- RLS Policy: Admins can SELECT all profiles
+CREATE POLICY PROFILES_SELECT_ADMIN ON PUBLIC.PROFILES
+  FOR SELECT
+  USING (
+    EXISTS (
+    SELECT
+         1
+    FROM
+         PUBLIC.PROFILES
+    WHERE
+         ID = AUTH.UID()
+        AND ROLE IN ('admin', 'manager', 'support')
+)
+  );
+
+-- RLS Policy: Admins can UPDATE all profiles
+CREATE POLICY PROFILES_UPDATE_ADMIN ON PUBLIC.PROFILES
+  FOR UPDATE
+  USING (
+    EXISTS (
+    SELECT
+         1
+    FROM
+         PUBLIC.PROFILES
+    WHERE
+         ID = AUTH.UID()
+        AND ROLE IN ('admin', 'manager', 'support')
+)
+  )
+  WITH CHECK (
+    EXISTS (
+    SELECT
+         1
+    FROM
+         PUBLIC.PROFILES
+    WHERE
+         ID = AUTH.UID()
+        AND ROLE IN ('admin', 'manager', 'support')
+)
+  );
+
+-- Function to automatically update updated_at timestamp
+CREATE OR REPLACE FUNCTION UPDATE_UPDATED_AT_COLUMN(
+) RETURNS TRIGGER AS
+    $$     BEGIN NEW.UPDATED_AT = NOW();
+    RETURN NEW;
+END;
+$$     LANGUAGE PLPGSQL;
+ 
+-- Trigger to automatically update updated_at on profile updates
+CREATE TRIGGER UPDATE_PROFILES_UPDATED_AT BEFORE UPDATE ON PUBLIC.PROFILES FOR EACH ROW EXECUTE
+
+FUNCTION UPDATE_UPDATED_AT_COLUMN(
+);
+ 
+-- Grant necessary permissions
+GRANT  USAGE ON SCHEMA PUBLIC TO AUTHENTICATED;
+GRANT  ALL ON PUBLIC.PROFILES TO AUTHENTICATED;

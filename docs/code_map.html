@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SM Flutter Project - Interactive Code Map</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f9fafb;
+            color: #1f2937;
+        }
+
+        .header {
+            background: white;
+            border-bottom: 1px solid #e5e7eb;
+            padding: 1.5rem;
+        }
+
+        .header-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+
+        .header-title h1 {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #111827;
+        }
+
+        .header-title p {
+            color: #6b7280;
+            font-size: 0.875rem;
+        }
+
+        .search-container {
+            margin: 1rem 0;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 0.5rem 0.75rem 0.5rem 2.5rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        .search-input:focus {
+            outline: none;
+            ring: 2px;
+            ring-color: #3b82f6;
+        }
+
+        .legend {
+            display: flex;
+            gap: 1.5rem;
+            margin-top: 1rem;
+            font-size: 0.875rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .legend-color {
+            width: 0.75rem;
+            height: 0.75rem;
+            border-radius: 0.125rem;
+        }
+
+        .main-content {
+            display: flex;
+            height: calc(100vh - 250px);
+        }
+
+        .tree-panel {
+            width: 50%;
+            background: white;
+            border-right: 1px solid #e5e7eb;
+            overflow-y: auto;
+            padding: 1rem;
+        }
+
+        .details-panel {
+            width: 50%;
+            background: white;
+            overflow-y: auto;
+            padding: 1.5rem;
+        }
+
+        .tree-node {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .tree-node:hover {
+            background: #f3f4f6;
+        }
+
+        .tree-node.selected {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .tree-node-icon {
+            width: 1rem;
+            height: 1rem;
+        }
+
+        .tree-children {
+            margin-left: 1.5rem;
+        }
+
+        .chevron {
+            width: 1rem;
+            height: 1rem;
+            transition: transform 0.2s;
+        }
+
+        .chevron.expanded {
+            transform: rotate(90deg);
+        }
+
+        .details-header {
+            margin-bottom: 1.5rem;
+        }
+
+        .details-title {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .details-title h2 {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .details-description {
+            color: #6b7280;
+        }
+
+        .section {
+            margin-bottom: 1.5rem;
+        }
+
+        .section h3 {
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .tag-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .tag {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+        }
+
+        .tag-purple {
+            background: #ede9fe;
+            color: #7c3aed;
+        }
+
+        .tag-blue {
+            background: #dbeafe;
+            color: #2563eb;
+        }
+
+        .tag-green {
+            background: #d1fae5;
+            color: #059669;
+        }
+
+        .tag-orange {
+            background: #fed7aa;
+            color: #ea580c;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.5rem;
+        }
+
+        .grid-item {
+            padding: 0.5rem 0.75rem;
+            background: #f3f4f6;
+            border-radius: 0.25rem;
+            font-size: 0.875rem;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 0.75rem;
+            background: #f9fafb;
+            border-radius: 0.25rem;
+            font-size: 0.875rem;
+            font-family: 'Courier New', monospace;
+            margin-bottom: 0.25rem;
+        }
+
+        .stats-footer {
+            background: white;
+            border-top: 1px solid #e5e7eb;
+            padding: 1.5rem;
+        }
+
+        .stats-container {
+            display: flex;
+            justify-content: space-around;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .stat-label {
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+
+        .empty-state {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #9ca3af;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-title">
+            <div>
+                <h1>SM Flutter Project - Code Map</h1>
+                <p>Interactive visualization of project architecture</p>
+            </div>
+        </div>
+        
+        <div class="search-container">
+            <input 
+                type="text" 
+                id="searchInput" 
+                class="search-input" 
+                placeholder="🔍 Search modules, features, files..."
+            >
+        </div>
+
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-color" style="background: #8b5cf6;"></div>
+                <span>Root</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #3b82f6;"></div>
+                <span>Module</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #10b981;"></div>
+                <span>Feature</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #f59e0b;"></div>
+                <span>Folder</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="tree-panel" id="treePanel"></div>
+        <div class="details-panel" id="detailsPanel">
+            <div class="empty-state">
+                <div style="text-align: center;">
+                    <div style="font-size: 3rem; opacity: 0.2; margin-bottom: 1rem;">📦</div>
+                    <p>Select a node to view details</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="stats-footer">
+        <div class="stats-container">
+            <div>
+                <div class="stat-value" style="color: #3b82f6;">7</div>
+                <div class="stat-label">Features</div>
+            </div>
+            <div>
+                <div class="stat-value" style="color: #10b981;">114+</div>
+                <div class="stat-label">Files</div>
+            </div>
+            <div>
+                <div class="stat-value" style="color: #8b5cf6;">4</div>
+                <div class="stat-label">Core Modules</div>
+            </div>
+            <div>
+                <div class="stat-value" style="color: #f59e0b;">Clean</div>
+                <div class="stat-label">Architecture</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const projectData = {
+            id: 'root',
+            name: 'SM Flutter App',
+            type: 'root',
+            description: 'Shop Management Application',
+            tech: ['Flutter', 'Riverpod', 'Go Router', 'Appwrite'],
+            children: [
+                {
+                    id: 'core',
+                    name: 'Core',
+                    type: 'module',
+                    description: 'Core functionality and infrastructure',
+                    children: [
+                        {
+                            id: 'core-config',
+                            name: 'Config',
+                            type: 'folder',
+                            files: ['splash_config.dart'],
+                            description: 'Application configuration'
+                        },
+                        {
+                            id: 'core-layout',
+                            name: 'Layout',
+                            type: 'folder',
+                            files: ['responsive_grid.dart', 'responsive.dart'],
+                            description: 'Responsive layout utilities'
+                        },
+                        {
+                            id: 'core-providers',
+                            name: 'Providers',
+                            type: 'folder',
+                            files: ['appwrite_provider.dart', 'settings_provider.dart', 'whatsapp_button_provider.dart'],
+                            description: 'Riverpod providers for state management'
+                        },
+                        {
+                            id: 'core-router',
+                            name: 'Router',
+                            type: 'folder',
+                            files: ['app_router.dart'],
+                            description: 'Go Router navigation configuration'
+                        },
+                        {
+                            id: 'core-services',
+                            name: 'Services',
+                            type: 'folder',
+                            files: ['splash_service.dart', 'url_launcher_service.dart'],
+                            description: 'Application services'
+                        },
+                        {
+                            id: 'core-theme',
+                            name: 'Theme',
+                            type: 'folder',
+                            files: ['app_colors.dart', 'app_theme.dart'],
+                            description: 'Material Design theme configuration'
+                        },
+                        {
+                            id: 'core-ui',
+                            name: 'UI Components',
+                            type: 'folder',
+                            files: ['app_scaffold.dart', 'branding_header.dart', 'map_picker_widget.dart', 'responsive_buttons.dart', 'splash_screen.dart', 'sticky_cart_button.dart', 'whatsapp_button.dart'],
+                            description: 'Reusable UI components'
+                        }
+                    ]
+                },
+                {
+                    id: 'features',
+                    name: 'Features',
+                    type: 'module',
+                    description: 'Feature modules following clean architecture',
+                    children: [
+                        {
+                            id: 'admin',
+                            name: 'Admin',
+                            type: 'feature',
+                            description: 'Complete admin dashboard and management',
+                            layers: ['Application', 'Data', 'Domain', 'Presentation'],
+                            subFeatures: ['Analytics', 'Auth', 'Content', 'Customers', 'Dashboard', 'Inventory', 'Marketing', 'Notifications', 'Orders', 'Products', 'SEO'],
+                            files: 47
+                        },
+                        {
+                            id: 'auth',
+                            name: 'Authentication',
+                            type: 'feature',
+                            description: 'User authentication and role management',
+                            layers: ['Application', 'Data', 'Presentation'],
+                            screens: ['Login', 'Signup', 'Forgot Password', 'Role Selection'],
+                            files: 7
+                        },
+                        {
+                            id: 'cart',
+                            name: 'Shopping Cart',
+                            type: 'feature',
+                            description: 'Cart management and checkout',
+                            layers: ['Application', 'Presentation'],
+                            screens: ['Cart', 'Checkout Address', 'Map Picker'],
+                            files: 6
+                        },
+                        {
+                            id: 'catalog',
+                            name: 'Product Catalog',
+                            type: 'feature',
+                            description: 'Product browsing and search',
+                            layers: ['Data', 'Presentation'],
+                            screens: ['Browse Products', 'Categories', 'Product Detail', 'Product List', 'Search'],
+                            widgets: ['Image Gallery', 'Infinite Scroll', 'Product Cards', 'Measurement Selector'],
+                            files: 27
+                        },
+                        {
+                            id: 'home',
+                            name: 'Home',
+                            type: 'feature',
+                            description: 'Main landing screen',
+                            layers: ['Presentation'],
+                            widgets: ['Category Scroller', 'Product Carousel', 'Search Bar'],
+                            files: 8
+                        },
+                        {
+                            id: 'orders',
+                            name: 'Orders',
+                            type: 'feature',
+                            description: 'Order management and tracking',
+                            layers: ['Application', 'Data', 'Presentation'],
+                            screens: ['Orders List', 'Order Detail', 'Order Confirmation'],
+                            files: 8
+                        },
+                        {
+                            id: 'profile',
+                            name: 'Profile',
+                            type: 'feature',
+                            description: 'User profile and settings',
+                            layers: ['Application', 'Data', 'Presentation'],
+                            screens: ['Profile', 'Profile Edit', 'Settings', 'Address Management', 'GST Management'],
+                            files: 11
+                        }
+                    ]
+                },
+                {
+                    id: 'data',
+                    name: 'Data',
+                    type: 'module',
+                    description: 'Shared data and mock data',
+                    files: ['mock_data.dart']
+                }
+            ]
+        };
+
+        let selectedNode = null;
+        let expandedNodes = new Set(['root', 'features', 'core']);
+        let searchTerm = '';
+
+        const colors = {
+            root: '#8b5cf6',
+            module: '#3b82f6',
+            feature: '#10b981',
+            folder: '#f59e0b',
+            file: '#6b7280'
+        };
+
+        function toggleNode(nodeId) {
+            if (expandedNodes.has(nodeId)) {
+                expandedNodes.delete(nodeId);
+            } else {
+                expandedNodes.add(nodeId);
+            }
+            renderTree();
+        }
+
+        function selectNode(node) {
+            selectedNode = node;
+            renderTree();
+            renderDetails();
+        }
+
+        function matchesSearch(node) {
+            if (!searchTerm) return true;
+            const term = searchTerm.toLowerCase();
+            return node.name.toLowerCase().includes(term) || 
+                   (node.description && node.description.toLowerCase().includes(term));
+        }
+
+        function renderTreeNode(node, level = 0) {
+            if (!matchesSearch(node) && level > 0) return '';
+            
+            const isExpanded = expandedNodes.has(node.id);
+            const hasChildren = node.children && node.children.length > 0;
+            const isSelected = selectedNode && selectedNode.id === node.id;
+            
+            let html = `
+                <div class="tree-node ${isSelected ? 'selected' : ''}" 
+                     style="margin-left: ${level * 24}px; ${isSelected ? 'color: white;' : ''}" 
+                     onclick="selectNode(${JSON.stringify(node).replace(/"/g, '&quot;')})">
+                    ${hasChildren ? `
+                        <span class="chevron ${isExpanded ? 'expanded' : ''}" 
+                              onclick="event.stopPropagation(); toggleNode('${node.id}')">
+                            ▶
+                        </span>
+                    ` : '<span style="width: 1rem; display: inline-block;"></span>'}
+                    <span style="color: ${isSelected ? 'white' : colors[node.type]};">
+                        ${node.type === 'folder' ? '📁' : node.type === 'feature' ? '📦' : '📂'}
+                    </span>
+                    <span style="font-weight: 500;">${node.name}</span>
+                    ${node.files ? `
+                        <span style="margin-left: auto; font-size: 0.75rem; opacity: 0.7;">
+                            ${typeof node.files === 'number' ? node.files + ' files' : node.files.length + ' files'}
+                        </span>
+                    ` : ''}
+                </div>
+            `;
+            
+            if (hasChildren && isExpanded) {
+                html += '<div class="tree-children">';
+                node.children.forEach(child => {
+                    html += renderTreeNode(child, level + 1);
+                });
+                html += '</div>';
+            }
+            
+            return html;
+        }
+
+        function renderTree() {
+            const treePanel = document.getElementById('treePanel');
+            treePanel.innerHTML = renderTreeNode(projectData);
+        }
+
+        function renderDetails() {
+            const detailsPanel = document.getElementById('detailsPanel');
+            
+            if (!selectedNode) {
+                detailsPanel.innerHTML = `
+                    <div class="empty-state">
+                        <div style="text-align: center;">
+                            <div style="font-size: 3rem; opacity: 0.2; margin-bottom: 1rem;">📦</div>
+                            <p>Select a node to view details</p>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = `
+                <div class="details-header">
+                    <div class="details-title">
+                        <span style="color: ${colors[selectedNode.type]}; font-size: 1.5rem;">
+                            ${selectedNode.type === 'folder' ? '📁' : selectedNode.type === 'feature' ? '📦' : '📂'}
+                        </span>
+                        <h2>${selectedNode.name}</h2>
+                    </div>
+                    <p class="details-description">${selectedNode.description}</p>
+                </div>
+            `;
+
+            if (selectedNode.tech) {
+                html += `
+                    <div class="section">
+                        <h3>Technologies</h3>
+                        <div class="tag-container">
+                            ${selectedNode.tech.map(tech => `<span class="tag tag-purple">${tech}</span>`).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            if (selectedNode.layers) {
+                html += `
+                    <div class="section">
+                        <h3>Architecture Layers</h3>
+                        <div class="tag-container">
+                            ${selectedNode.layers.map(layer => `<span class="tag tag-blue">${layer}</span>`).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            if (selectedNode.screens) {
+                html += `
+                    <div class="section">
+                        <h3>Screens</h3>
+                        <div class="grid">
+                            ${selectedNode.screens.map(screen => `<div class="grid-item">${screen}</div>`).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            if (selectedNode.subFeatures) {
+                html += `
+                    <div class="section">
+                        <h3>Sub-Features</h3>
+                        <div class="grid">
+                            ${selectedNode.subFeatures.map(feature => `<div class="grid-item" style="background: #d1fae5; color: #059669;">${feature}</div>`).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            if (selectedNode.widgets) {
+                html += `
+                    <div class="section">
+                        <h3>Widgets</h3>
+                        <div class="grid">
+                            ${selectedNode.widgets.map(widget => `<div class="grid-item" style="background: #fed7aa; color: #ea580c;">${widget}</div>`).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            if (selectedNode.files && Array.isArray(selectedNode.files)) {
+                html += `
+                    <div class="section">
+                        <h3>Files</h3>
+                        ${selectedNode.files.map(file => `
+                            <div class="file-item">
+                                <span style="color: #9ca3af;">📄</span>
+                                ${file}
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+
+            detailsPanel.innerHTML = html;
+        }
+
+        // Search functionality
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            searchTerm = e.target.value;
+            renderTree();
+        });
+
+        // Make functions global for onclick handlers
+        window.toggleNode = toggleNode;
+        window.selectNode = (nodeStr) => {
+            selectNode(typeof nodeStr === 'string' ? JSON.parse(nodeStr) : nodeStr);
+        };
+
+        // Initial render
+        renderTree();
+        renderDetails();
+    </script>
+</body>
+</html>

@@ -1,0 +1,72 @@
+-- ============================================================================
+-- Create Rating Replies Table
+-- ============================================================================
+-- This migration creates a table for threaded replies to product ratings/feedback
+
+-- Step 1: Create rating_replies table
+CREATE TABLE IF NOT EXISTS PUBLIC.RATING_REPLIES (
+    ID UUID PRIMARY KEY DEFAULT GEN_RANDOM_UUID(),
+    RATING_ID UUID NOT NULL REFERENCES PUBLIC.PRODUCT_RATINGS(ID) ON DELETE CASCADE,
+    USER_ID UUID NOT NULL REFERENCES PUBLIC.PROFILES(ID) ON DELETE CASCADE,
+    PARENT_REPLY_ID UUID REFERENCES PUBLIC.RATING_REPLIES(ID) ON DELETE CASCADE,
+    REPLY_TEXT TEXT NOT NULL,
+    CREATED_AT TIMESTAMPTZ DEFAULT NOW(),
+    UPDATED_AT TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Step 2: Create indexes for performance
+CREATE INDEX IF NOT EXISTS IDX_RATING_REPLIES_RATING_ID ON PUBLIC.RATING_REPLIES(RATING_ID);
+CREATE INDEX IF NOT EXISTS IDX_RATING_REPLIES_USER_ID ON PUBLIC.RATING_REPLIES(USER_ID);
+CREATE INDEX IF NOT EXISTS IDX_RATING_REPLIES_PARENT_REPLY_ID ON PUBLIC.RATING_REPLIES(PARENT_REPLY_ID) WHERE PARENT_REPLY_ID IS NOT NULL;
+CREATE INDEX IF NOT EXISTS IDX_RATING_REPLIES_CREATED_AT ON PUBLIC.RATING_REPLIES(CREATED_AT);
+
+-- Step 3: Create trigger to update updated_at column
+DROP TRIGGER IF EXISTS UPDATE_RATING_REPLIES_UPDATED_AT ON PUBLIC.RATING_REPLIES;
+CREATE TRIGGER UPDATE_RATING_REPLIES_UPDATED_AT
+    BEFORE UPDATE ON PUBLIC.RATING_REPLIES
+    FOR EACH ROW
+    EXECUTE FUNCTION PUBLIC.UPDATE_UPDATED_AT_COLUMN();
+
+-- Step 4: Enable Row Level Security
+ALTER TABLE PUBLIC.RATING_REPLIES ENABLE ROW LEVEL SECURITY;
+
+-- Step 5: Drop existing policies if they exist
+DROP POLICY IF EXISTS rating_replies_select_all ON PUBLIC.RATING_REPLIES;
+DROP POLICY IF EXISTS rating_replies_insert_own ON PUBLIC.RATING_REPLIES;
+DROP POLICY IF EXISTS rating_replies_update_own ON PUBLIC.RATING_REPLIES;
+DROP POLICY IF EXISTS rating_replies_delete_own ON PUBLIC.RATING_REPLIES;
+DROP POLICY IF EXISTS rating_replies_admin_all ON PUBLIC.RATING_REPLIES;
+
+-- Step 6: RLS Policy: Users can SELECT all replies (for viewing)
+CREATE POLICY rating_replies_select_all ON PUBLIC.RATING_REPLIES
+    FOR SELECT
+    USING (TRUE);
+
+-- Step 7: RLS Policy: Users can INSERT their own replies
+CREATE POLICY rating_replies_insert_own ON PUBLIC.RATING_REPLIES
+    FOR INSERT
+    WITH CHECK (AUTH.UID() = USER_ID);
+
+-- Step 8: RLS Policy: Users can UPDATE their own replies
+CREATE POLICY rating_replies_update_own ON PUBLIC.RATING_REPLIES
+    FOR UPDATE
+    USING (AUTH.UID() = USER_ID)
+    WITH CHECK (AUTH.UID() = USER_ID);
+
+-- Step 9: RLS Policy: Users can DELETE their own replies
+CREATE POLICY rating_replies_delete_own ON PUBLIC.RATING_REPLIES
+    FOR DELETE
+    USING (AUTH.UID() = USER_ID);
+
+-- Step 10: RLS Policy: Admins can SELECT/UPDATE/DELETE all replies
+CREATE POLICY rating_replies_admin_all ON PUBLIC.RATING_REPLIES
+    FOR ALL
+    USING (PUBLIC.IS_ADMIN(AUTH.UID()))
+    WITH CHECK (PUBLIC.IS_ADMIN(AUTH.UID()));
+
+-- Step 11: Grant permissions
+GRANT ALL ON PUBLIC.RATING_REPLIES TO AUTHENTICATED;
+
+-- Step 12: Add comment to table
+COMMENT ON TABLE PUBLIC.RATING_REPLIES IS 'Threaded replies to product ratings/feedback. Supports nested replies via parent_reply_id.';
+

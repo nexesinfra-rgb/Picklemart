@@ -1,0 +1,12 @@
+{
+  "name": "migration-scripts",
+  "version": "1.0.0",
+  "description": "Scripts to migrate Supabase project",
+  "main": "02_migrate_storage.js",
+  "scripts": {
+    "migrate:storage": "node 02_migrate_storage.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0"
+  }
+}

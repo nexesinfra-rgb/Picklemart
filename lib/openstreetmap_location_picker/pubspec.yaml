@@ -1,0 +1,35 @@
+name: openstreetmap_location_picker
+description: A beautiful, customizable location picker widget using OpenStreetMap with search functionality, auto/manual location selection, and India-specific search.
+version: 0.1.0
+homepage: https://github.com/yourusername/openstreetmap_location_picker
+repository: https://github.com/yourusername/openstreetmap_location_picker
+issue_tracker: https://github.com/yourusername/openstreetmap_location_picker/issues
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+  flutter: ">=3.10.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State management
+  flutter_riverpod: ^2.4.9
+
+  # Map and location
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
+  geolocator: ^10.1.0
+
+  # HTTP and permissions
+  http: ^1.1.0
+  permission_handler: ^11.0.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+# The following section is specific to Flutter packages.
+flutter:
+  uses-material-design: true

@@ -1,0 +1,7 @@
+﻿{
+  "project_id": "bgqcuykvsiejgqeiefpi",
+  "database": {
+    "host": "db.bgqcuykvsiejgqeiefpi.supabase.co",
+    "port": 5432
+  }
+}

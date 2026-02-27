@@ -1,0 +1,69 @@
+-- Create Product Views Table (Analytics)
+-- Run this in Supabase SQL Editor
+
+-- Step 1: Create product_views table
+CREATE TABLE IF NOT EXISTS PUBLIC.PRODUCT_VIEWS (
+    ID UUID PRIMARY KEY DEFAULT GEN_RANDOM_UUID(),
+    PRODUCT_ID UUID NOT NULL REFERENCES PUBLIC.PRODUCTS(ID) ON DELETE CASCADE,
+    USER_ID UUID REFERENCES PUBLIC.PROFILES(ID) ON DELETE SET NULL,
+    SESSION_ID TEXT,
+    VIEWED_AT TIMESTAMPTZ DEFAULT NOW(),
+    DURATION_SECONDS INTEGER DEFAULT 0,
+    SOURCE TEXT -- 'home', 'search', 'category', 'related', etc.
+);
+
+-- Step 2: Create indexes for product_views table
+CREATE INDEX IF NOT EXISTS IDX_PRODUCT_VIEWS_PRODUCT_ID ON PUBLIC.PRODUCT_VIEWS(PRODUCT_ID);
+CREATE INDEX IF NOT EXISTS IDX_PRODUCT_VIEWS_USER_ID ON PUBLIC.PRODUCT_VIEWS(USER_ID);
+CREATE INDEX IF NOT EXISTS IDX_PRODUCT_VIEWS_VIEWED_AT ON PUBLIC.PRODUCT_VIEWS(VIEWED_AT DESC);
+CREATE INDEX IF NOT EXISTS IDX_PRODUCT_VIEWS_SESSION_ID ON PUBLIC.PRODUCT_VIEWS(SESSION_ID) WHERE SESSION_ID IS NOT NULL;
+
+-- Step 3: Enable Row Level Security (RLS)
+ALTER TABLE PUBLIC.PRODUCT_VIEWS ENABLE ROW LEVEL SECURITY;
+
+-- Step 4: Create RLS policies for product_views table
+-- Users can INSERT their own views
+DROP POLICY IF EXISTS "Users can insert their own views" ON PUBLIC.PRODUCT_VIEWS;
+CREATE POLICY "Users can insert their own views" ON PUBLIC.PRODUCT_VIEWS
+    FOR INSERT
+    TO AUTHENTICATED
+    WITH CHECK (AUTH.UID() = USER_ID OR USER_ID IS NULL);
+
+-- Admins can SELECT all views
+DROP POLICY IF EXISTS "Admins can select all views" ON PUBLIC.PRODUCT_VIEWS;
+CREATE POLICY "Admins can select all views" ON PUBLIC.PRODUCT_VIEWS
+    FOR SELECT
+    TO AUTHENTICATED
+    USING (
+        EXISTS (
+            SELECT 1
+            FROM PUBLIC.PROFILES
+            WHERE ID = AUTH.UID()
+            AND ROLE IN ('admin', 'manager', 'support')
+        )
+    );
+
+-- Users can SELECT their own views
+DROP POLICY IF EXISTS "Users can select their own views" ON PUBLIC.PRODUCT_VIEWS;
+CREATE POLICY "Users can select their own views" ON PUBLIC.PRODUCT_VIEWS
+    FOR SELECT
+    TO AUTHENTICATED
+    USING (AUTH.UID() = USER_ID);
+
+-- Step 5: Verify table was created
+SELECT
+    '✅ Product views table created successfully' AS STATUS,
+    (
+        SELECT COUNT(*)
+        FROM INFORMATION_SCHEMA.TABLES
+        WHERE TABLE_SCHEMA = 'public'
+        AND TABLE_NAME = 'product_views'
+    ) AS PRODUCT_VIEWS_TABLE_EXISTS,
+    (
+        SELECT COUNT(*)
+        FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS
+        WHERE TABLE_SCHEMA = 'public'
+        AND TABLE_NAME = 'product_views'
+        AND CONSTRAINT_TYPE = 'FOREIGN KEY'
+    ) AS FOREIGN_KEYS_EXIST;
+

@@ -1,0 +1,1 @@
+\sf is_admin

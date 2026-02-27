@@ -1,0 +1,8 @@
+-- Fix credit_transactions constraint to allow 'purchase' type
+
+ALTER TABLE PUBLIC.CREDIT_TRANSACTIONS 
+DROP CONSTRAINT IF EXISTS credit_transactions_transaction_type_check;
+
+ALTER TABLE PUBLIC.CREDIT_TRANSACTIONS 
+ADD CONSTRAINT credit_transactions_transaction_type_check 
+CHECK (TRANSACTION_TYPE IN ('payin', 'payout', 'purchase'));

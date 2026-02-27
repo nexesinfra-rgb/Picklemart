@@ -1,0 +1,24 @@
+{
+  "supabase": {
+    "enabled": true,
+    "projectUrl": "https://bgqcuykvsiejgqeiefpi.supabase.co",
+    "anonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJncWN1eWt2c2llamdxZWllZnBpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU3NzE1NzQsImV4cCI6MjA4MTM0NzU3NH0.YysdlRJwJWTDrFgF8cQA6-0ppETGRV6RBCTcXxe0jvg",
+    "description": "Supabase MCP server for database operations and queries"
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

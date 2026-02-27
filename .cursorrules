@@ -1,0 +1,35 @@
+# Supabase MCP Configuration
+
+## Supabase Project Details
+
+- Project URL: https://bgqcuykvsiejgqeiefpi.supabase.co
+- Anon Key: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJncWN1eWt2c2llamdxZWllZnBpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU3NzE1NzQsImV4cCI6MjA4MTM0NzU3NH0.YysdlRJwJWTDrFgF8cQA6-0ppETGRV6RBCTcXxe0jvg
+
+## Database Schema
+
+- All tables should follow the schema defined in docs/supabase_integration_checklist.md
+- Use Row Level Security (RLS) policies for all tables
+- Follow the naming conventions: snake_case for database, camelCase for Dart
+
+## Integration Guidelines
+
+- Always use the Supabase client from supabaseClientProvider
+- Handle authentication errors gracefully
+- Use transactions for multi-step operations
+- Implement proper error handling and user feedback
+- Follow the checklist in docs/supabase_integration_checklist.md for implementation order
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "841284842794",
+    "project_id": "picklemart-9a4b0",
+    "storage_bucket": "picklemart-9a4b0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:841284842794:android:fa6ee0566a3f28e7bc9a53",
+        "android_client_info": {
+          "package_name": "com.picklemart.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDMFgxHHUpikbDUGZJTRXaM0Cobhs3Kgew"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

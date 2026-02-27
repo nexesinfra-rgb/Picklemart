@@ -1,0 +1,72 @@
+-- Create Cart Items Table
+-- Run this in Supabase SQL Editor
+
+-- Step 1: Create cart_items table
+CREATE TABLE IF NOT EXISTS PUBLIC.CART_ITEMS (
+    ID UUID PRIMARY KEY DEFAULT GEN_RANDOM_UUID(),
+    USER_ID UUID NOT NULL REFERENCES PUBLIC.PROFILES(ID) ON DELETE CASCADE,
+    PRODUCT_ID UUID NOT NULL REFERENCES PUBLIC.PRODUCTS(ID) ON DELETE CASCADE,
+    VARIANT_ID UUID REFERENCES PUBLIC.PRODUCT_VARIANTS(ID) ON DELETE SET NULL,
+    QUANTITY INTEGER NOT NULL DEFAULT 1 CHECK (QUANTITY > 0),
+    MEASUREMENT_UNIT TEXT, -- e.g., 'kg', 'L', 'ml', 'pc', 'g', etc.
+    CREATED_AT TIMESTAMPTZ DEFAULT NOW(),
+    UPDATED_AT TIMESTAMPTZ DEFAULT NOW(),
+ 
+    -- Unique constraint to prevent duplicate items with same product, variant, and measurement unit
+    UNIQUE(USER_ID, PRODUCT_ID, VARIANT_ID, MEASUREMENT_UNIT)
+);
+
+-- Step 2: Create indexes for cart_items table
+CREATE INDEX IF NOT EXISTS IDX_CART_ITEMS_USER_ID ON PUBLIC.CART_ITEMS(USER_ID);
+
+CREATE INDEX IF NOT EXISTS IDX_CART_ITEMS_PRODUCT_ID ON PUBLIC.CART_ITEMS(PRODUCT_ID);
+
+CREATE INDEX IF NOT EXISTS IDX_CART_ITEMS_VARIANT_ID ON PUBLIC.CART_ITEMS(VARIANT_ID) WHERE VARIANT_ID IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS IDX_CART_ITEMS_CREATED_AT ON PUBLIC.CART_ITEMS(CREATED_AT DESC);
+
+-- Step 3: Create updated_at trigger function (if not exists)
+CREATE OR REPLACE FUNCTION PUBLIC.HANDLE_UPDATED_AT(
+) RETURNS TRIGGER AS
+    $$      BEGIN NEW.UPDATED_AT = NOW();
+    RETURN  NEW;
+END;
+$$      LANGUAGE PLPGSQL;
+ 
+-- Step 4: Create trigger for updated_at
+DROP    TRIGGER IF EXISTS SET_UPDATED_AT_CART_ITEMS ON PUBLIC.CART_ITEMS;
+CREATE TRIGGER SET_UPDATED_AT_CART_ITEMS BEFORE
+UPDATE ON PUBLIC.CART_ITEMS FOR EACH ROW EXECUTE FUNCTION PUBLIC.HANDLE_UPDATED_AT(
+);
+ 
+-- Step 5: Enable Row Level Security (RLS)
+ALTER TABLE PUBLIC.CART_ITEMS ENABLE ROW LEVEL SECURITY;
+ 
+-- Step 6: Create RLS policies for cart_items table
+-- Users can SELECT/INSERT/UPDATE/DELETE their own cart items
+DROP POLICY IF EXISTS "Users can manage their own cart items" ON PUBLIC.CART_ITEMS;
+CREATE POLICY "Users can manage their own cart items" ON PUBLIC.CART_ITEMS FOR ALL USING (AUTH.UID() = USER_ID);
+ 
+-- Admins can SELECT all cart items (for analytics)
+DROP POLICY IF EXISTS "Admins can view all cart items" ON PUBLIC.CART_ITEMS;
+CREATE POLICY "Admins can view all cart items" ON PUBLIC.CART_ITEMS FOR
+SELECT
+    USING ( EXISTS (
+        SELECT
+            1
+        FROM
+            PUBLIC.PROFILES
+        WHERE
+            PROFILES.ID = AUTH.UID()
+            AND PROFILES.ROLE IN ('admin', 'manager', 'support')
+    ) );
+ 
+-- Step 7: Add comment to table
+COMMENT ON TABLE PUBLIC.CART_ITEMS IS 'Stores cart items for each user. Supports products with variants and measurement-based pricing.';
+
+
+
+
+
+
+
