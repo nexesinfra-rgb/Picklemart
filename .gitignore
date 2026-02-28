@@ -49,3 +49,6 @@ app.*.map.json
 /android/app/*.jks
 /android/app/*.keystore
 /android/upload-keystore.jks
+
+# Google Cloud Service Account
+fcm_worker/service-account.json

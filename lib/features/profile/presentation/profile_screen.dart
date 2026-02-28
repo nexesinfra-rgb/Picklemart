@@ -961,7 +961,7 @@ class ProfileScreen extends ConsumerWidget {
                 onPressed: () {
                   ref.read(authControllerProvider.notifier).signOut();
                   Navigator.of(context).pop();
-                  context.goNamed('role');
+                  context.goNamed('admin-login');
                 },
                 child: const Text('Sign Out'),
               ),
@@ -1090,7 +1090,7 @@ class ProfileScreen extends ConsumerWidget {
                       Navigator.of(context).pop();
 
                       // Navigate to role selection/login screen
-                      context.goNamed('role');
+                      context.goNamed('admin-login');
 
                       // Show success message
                       ScaffoldMessenger.of(context).showSnackBar(

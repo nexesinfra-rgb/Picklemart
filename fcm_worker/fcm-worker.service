@@ -1,0 +1,16 @@
+[Unit]
+Description=FCM Worker Service
+After=network.target docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/fcm-worker
+ExecStart=/opt/fcm-worker/venv/bin/python fcm_worker.py
+Restart=always
+RestartSec=10
+Environment=GOOGLE_APPLICATION_CREDENTIALS=/opt/fcm-worker/service-account.json
+
+[Install]
+WantedBy=multi-user.target
