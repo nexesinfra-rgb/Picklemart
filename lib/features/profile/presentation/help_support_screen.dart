@@ -189,7 +189,7 @@ class HelpSupportScreen extends ConsumerWidget {
                 onPressed: () {
                   ref.read(authControllerProvider.notifier).signOut();
                   Navigator.of(context).pop();
-                  context.goNamed('admin-login');
+                  context.goNamed('role');
                 },
                 child: const Text('Sign Out'),
               ),
@@ -210,3 +210,4 @@ class HelpSupportScreen extends ConsumerWidget {
     );
   }
 }
+

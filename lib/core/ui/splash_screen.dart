@@ -117,7 +117,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     // Only navigate if we haven't already (from the timeout)
     if (!_hasNavigated && mounted) {
       _hasNavigated = true;
-      context.goNamed('admin-login');
+      context.goNamed('role');
     }
   }
 
