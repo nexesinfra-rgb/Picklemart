@@ -269,7 +269,8 @@ class _AdminPaymentOutListScreenState
   Future<void> _generatePdf() async {
     final pdf = pw.Document();
     final transactions = _filteredTransactions;
-    final font = await PdfGoogleFonts.nunitoExtraLight();
+    // final font = await PdfGoogleFonts.nunitoExtraLight();
+    final font = pw.Font.helvetica(); // Use standard PDF font
     final title =
         _manufacturerName != null
             ? 'Transactions: $_manufacturerName'

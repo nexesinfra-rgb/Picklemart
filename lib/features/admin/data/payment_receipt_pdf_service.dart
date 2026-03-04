@@ -218,28 +218,47 @@ class PaymentReceiptPdfService {
     final normalized = categoryName.trim().toUpperCase();
 
     // App standard priority order:
-    // 1. VEG PICKLES
-    // 2. NON-VEG PICKLES
+    // 1. NON-VEG PICKLES
+    // 2. VEG PICKLES
     // 3. KARAPODULU
     // 4. VADIYALU
-    // 5. SNACKS
-    if (normalized.contains('VEG PICKLE') && !normalized.contains('NON')) {
-      return 1;
-    }
+    // 5. SWEET AND SNACKS
+    // 6. SPECIAL ITEMS
+
+    // 1. Non-Veg Pickles
     if (normalized.contains('NON') &&
         normalized.contains('VEG') &&
         normalized.contains('PICKLE')) {
+      return 1;
+    }
+
+    // 2. Veg Pickles
+    if (normalized.contains('VEG') &&
+        normalized.contains('PICKLE') &&
+        !normalized.contains('NON')) {
       return 2;
     }
-    if (normalized.contains('KARAPODULU')) {
+
+    // 3. Karapodhulu
+    if (normalized.contains('KARAPOD') || normalized.contains('KARAPPOD')) {
       return 3;
     }
+
+    // 4. Vadiyalu
     if (normalized.contains('VADIYALU')) {
       return 4;
     }
-    if (normalized.contains('SNACK')) {
+
+    // 5. Sweet and Snacks
+    if (normalized.contains('SWEET') || normalized.contains('SNACK')) {
       return 5;
     }
+
+    // 6. Special Items
+    if (normalized.contains('SPECIAL')) {
+      return 6;
+    }
+
     return 999; // Others
   }
 
@@ -305,7 +324,9 @@ class PaymentReceiptPdfService {
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
                   pw.Text(
-                    _cleanText(precomputed.companyInfo['name'] ?? 'PICKLE MART'),
+                    _cleanText(
+                      precomputed.companyInfo['name'] ?? 'PICKLE MART',
+                    ),
                     style: pw.TextStyle(
                       fontSize: 14,
                       fontWeight: pw.FontWeight.bold,
@@ -318,17 +339,23 @@ class PaymentReceiptPdfService {
                   ),
                   pw.SizedBox(height: 2),
                   pw.Text(
-                    _cleanText('Phone no: ${precomputed.companyInfo['phone'] ?? ""}'),
+                    _cleanText(
+                      'Phone no: ${precomputed.companyInfo['phone'] ?? ""}',
+                    ),
                     style: const pw.TextStyle(fontSize: 9),
                   ),
                   pw.SizedBox(height: 2),
                   pw.Text(
-                    _cleanText('Email: ${precomputed.companyInfo['email'] ?? "picklemarts@gmail.com"}'),
+                    _cleanText(
+                      'Email: ${precomputed.companyInfo['email'] ?? "picklemarts@gmail.com"}',
+                    ),
                     style: const pw.TextStyle(fontSize: 9),
                   ),
                   pw.SizedBox(height: 2),
                   pw.Text(
-                    _cleanText('State: ${precomputed.companyInfo['state'] ?? "37-Andhra Pradesh"}'),
+                    _cleanText(
+                      'State: ${precomputed.companyInfo['state'] ?? "37-Andhra Pradesh"}',
+                    ),
                     style: const pw.TextStyle(fontSize: 9),
                   ),
                   if (fssai != null && fssai.toString().isNotEmpty) ...[
@@ -400,9 +427,11 @@ class PaymentReceiptPdfService {
                     ),
                     pw.SizedBox(height: 2),
                     pw.Text(
-                      _cleanText(order != null
-                          ? '${order.deliveryAddress.city.toUpperCase()}, ${order.deliveryAddress.state.toUpperCase()}'
-                          : (receipt.customerPhone ?? '-')),
+                      _cleanText(
+                        order != null
+                            ? '${order.deliveryAddress.city.toUpperCase()}, ${order.deliveryAddress.state.toUpperCase()}'
+                            : (receipt.customerPhone ?? '-'),
+                      ),
                       style: const pw.TextStyle(fontSize: 9),
                     ),
                     pw.SizedBox(height: 2),
@@ -696,7 +725,9 @@ class PaymentReceiptPdfService {
                 pw.Align(
                   alignment: pw.Alignment.centerRight,
                   child: pw.Text(
-                    _cleanText('For ${precomputed.companyInfo['name'] ?? 'Pickle Mart'}'),
+                    _cleanText(
+                      'For ${precomputed.companyInfo['name'] ?? 'Pickle Mart'}',
+                    ),
                     style: pw.TextStyle(
                       fontSize: 9,
                       fontWeight: pw.FontWeight.bold,
@@ -871,7 +902,9 @@ class PaymentReceiptPdfService {
             crossAxisAlignment: pw.CrossAxisAlignment.end,
             children: [
               pw.Text(
-                _cleanText('For: ${precomputed.companyInfo['name'] ?? 'PICKLE MART'}'),
+                _cleanText(
+                  'For: ${precomputed.companyInfo['name'] ?? 'PICKLE MART'}',
+                ),
                 style: pw.TextStyle(
                   fontSize: 10,
                   fontWeight: pw.FontWeight.bold,
@@ -922,7 +955,9 @@ class PaymentReceiptPdfService {
         ),
         pw.SizedBox(height: 4),
         pw.Text(
-          _cleanText('${companyInfo['name'] ?? "Pickle Mart"} | Phone: ${companyInfo['phone'] ?? "N/A"}'),
+          _cleanText(
+            '${companyInfo['name'] ?? "Pickle Mart"} | Phone: ${companyInfo['phone'] ?? "N/A"}',
+          ),
           style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700),
         ),
         pw.SizedBox(height: 8),

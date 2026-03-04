@@ -185,7 +185,14 @@ final categoriesProvider = Provider<List<String>>((ref) {
   for (final p in products) {
     set.addAll(p.categories);
   }
-  final list = set.toList()..sort();
+  final list =
+      set.toList()..sort((a, b) {
+        final priorityA = getCategorySortPriority(a);
+        final priorityB = getCategorySortPriority(b);
+        final comparison = priorityA.compareTo(priorityB);
+        if (comparison != 0) return comparison;
+        return a.compareTo(b);
+      });
   return list;
 });
 
@@ -196,27 +203,58 @@ int getCategorySortPriority(String categoryName) {
   final normalized = categoryName.trim().toUpperCase();
 
   // Exact order as specified by client:
-  // 1. VEG PICKLES
-  // 2. NON- VEG PICKLES
+  // 1. NON-VEG PICKLES (Non-Vegetables)
+  // 2. VEG PICKLES (Vegetable Pickle)
   // 3. KARAPODULU
   // 4. VADIYALU
-  // 5. SNACKS
-  if (normalized.contains('VEG PICKLE') && !normalized.contains('NON')) {
-    return 1; // VEG PICKLES
+  // 5. SWEET AND SNACKS
+  // 6. SPECIAL ITEMS
+
+  // 1. Non-Veg Pickles
+  if ((normalized.contains('NON') && normalized.contains('VEG')) ||
+      normalized.contains('CHICKEN') ||
+      normalized.contains('MUTTON') ||
+      normalized.contains('FISH') ||
+      normalized.contains('PRAWN') ||
+      normalized.contains('MEAT') ||
+      normalized.contains('KEEMA')) {
+    return 1;
   }
-  if (normalized.contains('NON') &&
-      normalized.contains('VEG') &&
-      normalized.contains('PICKLE')) {
-    return 2; // NON- VEG PICKLES or NON-VEG PICKLES
+
+  // 2. Veg Pickles
+  if (normalized == 'VEG PICKLES' ||
+      normalized == 'PICKLES' ||
+      normalized == 'VEGETABLE PICKLES' ||
+      ((normalized.contains('PICKLE') ||
+          normalized.contains('VEG') ||
+          normalized.contains('PACHADI') ||
+          normalized.contains('ACHAR')) &&
+      !normalized.contains('KARAM') &&
+      !normalized.contains('PODI') &&
+      !normalized.contains('POWDER'))) {
+    return 2;
   }
-  if (normalized.contains('KARAPODULU')) {
-    return 3; // KARAPODULU
+
+  // 3. Karapodhulu
+  if (normalized.contains('KARAPOD') ||
+      normalized.contains('KARAPPOD') ||
+      normalized.contains('KARAM')) {
+    return 3;
   }
+
+  // 4. Vadiyalu
   if (normalized.contains('VADIYALU')) {
-    return 4; // VADIYALU
+    return 4;
   }
-  if (normalized.contains('SNACK')) {
-    return 5; // SNACKS
+
+  // 5. Sweet and Snacks
+  if (normalized.contains('SWEET') || normalized.contains('SNACK')) {
+    return 5;
+  }
+
+  // 6. Special Items
+  if (normalized.contains('SPECIAL')) {
+    return 6;
   }
 
   // All other categories appear after the specified ones

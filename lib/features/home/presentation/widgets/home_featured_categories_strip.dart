@@ -18,10 +18,9 @@ class HomeFeaturedCategoriesStrip extends ConsumerWidget {
 
     return categoriesAsync.when(
       data: (categories) {
-        // Move viewed categories to the end; show others first
-        final unseen = categories.where((c) => !viewed.contains(c.name)).toList();
-        final seen = categories.where((c) => viewed.contains(c.name)).toList();
-        final ordered = <Category>[...unseen, ...seen];
+        // Use the categories directly as they are already sorted by priority
+        // Do NOT reorder based on viewed history to keep the order stable
+        final ordered = categories;
 
         if (ordered.isEmpty) return const SizedBox.shrink();
 
@@ -40,10 +39,15 @@ class HomeFeaturedCategoriesStrip extends ConsumerWidget {
                 label: category.name,
                 imageUrl: category.imageUrl,
                 onTap: () {
-                  ref.read(recentCategoriesProvider.notifier).markViewed(category.name);
+                  ref
+                      .read(recentCategoriesProvider.notifier)
+                      .markViewed(category.name);
                   context.pushNamed(
                     'browse',
-                    pathParameters: {'kind': 'category', 'value': category.name},
+                    pathParameters: {
+                      'kind': 'category',
+                      'value': category.name,
+                    },
                   );
                 },
               );
@@ -51,18 +55,21 @@ class HomeFeaturedCategoriesStrip extends ConsumerWidget {
           ),
         );
       },
-      loading: () => const SizedBox(
-        height: 100,
-        child: Center(
-          child: CircularProgressIndicator(),
-        ),
-      ),
+      loading:
+          () => const SizedBox(
+            height: 100,
+            child: Center(child: CircularProgressIndicator()),
+          ),
       error: (error, stackTrace) {
         // On error, fall back to the old categoriesProvider
         final items = ref.watch(categoriesProvider);
-        final unseen = items.where((c) => !viewed.contains(c)).toList();
-        final seen = items.where((c) => viewed.contains(c)).toList();
-        final ordered = <String>[...unseen, ...seen];
+
+        // Sort the fallback list using the same priority logic
+        final ordered = List<String>.from(items)..sort((a, b) {
+          final priorityA = getCategorySortPriority(a);
+          final priorityB = getCategorySortPriority(b);
+          return priorityA.compareTo(priorityB);
+        });
 
         if (ordered.isEmpty) return const SizedBox.shrink();
 
@@ -132,9 +139,7 @@ class _MiniCategoryCard extends StatelessWidget {
           child: Stack(
             children: [
               // Image fills the entire card
-              Positioned.fill(
-                child: _buildImage(),
-              ),
+              Positioned.fill(child: _buildImage()),
               // Text overlay at the bottom
               Positioned(
                 bottom: 0,
@@ -191,7 +196,8 @@ class _MiniCategoryCard extends StatelessWidget {
           return Image.asset(
             fallbackImage,
             fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => Container(color: const Color(0xFFE5E7EB)),
+            errorBuilder:
+                (_, __, ___) => Container(color: const Color(0xFFE5E7EB)),
           );
         },
       );
@@ -207,10 +213,11 @@ class _MiniCategoryCard extends StatelessWidget {
           color: const Color(0xFFE5E7EB),
           child: Center(
             child: CircularProgressIndicator(
-              value: loadingProgress.expectedTotalBytes != null
-                  ? loadingProgress.cumulativeBytesLoaded /
-                      loadingProgress.expectedTotalBytes!
-                  : null,
+              value:
+                  loadingProgress.expectedTotalBytes != null
+                      ? loadingProgress.cumulativeBytesLoaded /
+                          loadingProgress.expectedTotalBytes!
+                      : null,
             ),
           ),
         );
@@ -221,7 +228,8 @@ class _MiniCategoryCard extends StatelessWidget {
         return Image.asset(
           fallbackImage,
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => Container(color: const Color(0xFFE5E7EB)),
+          errorBuilder:
+              (_, __, ___) => Container(color: const Color(0xFFE5E7EB)),
         );
       },
     );
@@ -321,7 +329,7 @@ String _imageForCategory(String label) {
     'pickle': 'assets/picklemart.png',
     'achar': 'assets/picklemart.png',
     'indian pickle': 'assets/picklemart.png',
-    
+
     // Karam Podis
     'karam podis': 'assets/picklemart.png',
     'karam podi': 'assets/picklemart.png',
@@ -329,7 +337,7 @@ String _imageForCategory(String label) {
     'idli podi': 'assets/picklemart.png',
     'dosa podi': 'assets/picklemart.png',
     'chutney podi': 'assets/picklemart.png',
-    
+
     // Spice Powders
     'spice powders': 'assets/picklemart.png',
     'spice powder': 'assets/picklemart.png',
@@ -339,7 +347,7 @@ String _imageForCategory(String label) {
     'sambar powder': 'assets/picklemart.png',
     'rasam powder': 'assets/picklemart.png',
     'curry powder': 'assets/picklemart.png',
-    
+
     // Masalas
     'masalas': 'assets/picklemart.png',
     'masala': 'assets/picklemart.png',

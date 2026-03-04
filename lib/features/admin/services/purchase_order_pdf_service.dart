@@ -563,28 +563,47 @@ class PurchaseOrderPdfService {
     final normalized = categoryName.trim().toUpperCase();
 
     // App standard priority order:
-    // 1. VEG PICKLES
-    // 2. NON-VEG PICKLES
+    // 1. NON-VEG PICKLES
+    // 2. VEG PICKLES
     // 3. KARAPODULU
     // 4. VADIYALU
-    // 5. SNACKS
-    if (normalized.contains('VEG PICKLE') && !normalized.contains('NON')) {
-      return 1;
-    }
+    // 5. SWEET AND SNACKS
+    // 6. SPECIAL ITEMS
+
+    // 1. Non-Veg Pickles
     if (normalized.contains('NON') &&
         normalized.contains('VEG') &&
         normalized.contains('PICKLE')) {
+      return 1;
+    }
+
+    // 2. Veg Pickles
+    if (normalized.contains('VEG') &&
+        normalized.contains('PICKLE') &&
+        !normalized.contains('NON')) {
       return 2;
     }
-    if (normalized.contains('KARAPODULU')) {
+
+    // 3. Karapodhulu
+    if (normalized.contains('KARAPOD') || normalized.contains('KARAPPOD')) {
       return 3;
     }
+
+    // 4. Vadiyalu
     if (normalized.contains('VADIYALU')) {
       return 4;
     }
-    if (normalized.contains('SNACK')) {
+
+    // 5. Sweet and Snacks
+    if (normalized.contains('SWEET') || normalized.contains('SNACK')) {
       return 5;
     }
+
+    // 6. Special Items
+    if (normalized.contains('SPECIAL')) {
+      return 6;
+    }
+
     return 999; // Others
   }
 

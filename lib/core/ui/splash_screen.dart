@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
+// import 'package:google_fonts/google_fonts.dart';
 import '../../features/auth/application/auth_controller.dart';
 import '../../features/admin/application/admin_auth_controller.dart';
 import '../config/splash_config.dart';
@@ -177,7 +177,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                   children: [
                     Text(
                       'with love from',
-                      style: GoogleFonts.poppins(
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
                         fontSize: 14,
                         color: Colors.black.withOpacity(0.6),
                         fontWeight: FontWeight.w500,
@@ -186,7 +187,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                     const SizedBox(height: 4),
                     Text(
                       'nexes',
-                      style: GoogleFonts.poppins(
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
                         fontSize: 20,
                         color: Colors.black,
                         fontWeight: FontWeight.bold,

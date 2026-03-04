@@ -20,15 +20,20 @@ class CategoryProductRows extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final categories = ref.watch(categoriesProvider);
     final products = ref.watch(allProductsProvider);
-    final viewed = ref.watch(recentCategoriesProvider);
+    // final viewed = ref.watch(recentCategoriesProvider); // Ignore viewed history
 
-    // Order categories: unseen first, then seen, take top N
-    final unseen = categories.where((c) => !viewed.contains(c)).toList();
-    final seen = categories.where((c) => viewed.contains(c)).toList();
-    final ordered = [...unseen, ...seen].take(maxCategories).toList();
+    // Order categories strictly by priority
+    final ordered = List<String>.from(categories)..sort((a, b) {
+       final priorityA = getCategorySortPriority(a);
+       final priorityB = getCategorySortPriority(b);
+       return priorityA.compareTo(priorityB);
+    });
+    
+    // Take only the top N categories
+    final displayCategories = ordered.take(maxCategories).toList();
 
     final rows = <Widget>[];
-    for (final c in ordered) {
+    for (final c in displayCategories) {
       final items = _byCategory(products, c).take(maxItemsPerRow).toList();
       if (items.isEmpty) continue;
 

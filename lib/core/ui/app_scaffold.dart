@@ -88,7 +88,7 @@ class AppScaffold extends StatelessWidget {
               ],
             ),
             // WhatsApp button overlay
-            const DraggableWhatsAppButton(),
+            // const DraggableWhatsAppButton(),
           ],
         ),
       );
@@ -100,7 +100,7 @@ class AppScaffold extends StatelessWidget {
         children: [
           child,
           // WhatsApp button overlay
-          const DraggableWhatsAppButton(),
+          // const DraggableWhatsAppButton(),
         ],
       ),
       bottomNavigationBar:

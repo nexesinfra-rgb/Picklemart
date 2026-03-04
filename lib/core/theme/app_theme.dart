@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 
 /// Builds the light theme for the application.
-/// 
+///
 /// Note: This function is cached at the provider level (see theme_provider.dart),
 /// so it's only called once when the light theme provider is first accessed.
 /// GoogleFonts.manropeTextTheme() will not be called on every rebuild.
@@ -22,7 +22,9 @@ ThemeData buildAppTheme() {
   );
 
   // Base Manrope text theme with clear weight hierarchy
-  final baseTextTheme = GoogleFonts.manropeTextTheme().apply(
+  // switched to standard text theme to avoid network errors
+  final baseTextTheme = ThemeData.light().textTheme.apply(
+    fontFamily: 'Manrope',
     bodyColor: AppColors.textPrimary,
     displayColor: AppColors.textPrimary,
   );
@@ -184,7 +186,7 @@ ThemeData buildAppTheme() {
 }
 
 /// Builds the dark theme for the application.
-/// 
+///
 /// Note: This function is cached at the provider level (see theme_provider.dart),
 /// so it's only called once when the dark theme provider is first accessed.
 /// GoogleFonts.manropeTextTheme() will not be called on every rebuild.
@@ -212,7 +214,9 @@ ThemeData buildAppDarkTheme() {
   );
 
   // Base Manrope text theme with clear weight hierarchy
-  final baseTextTheme = GoogleFonts.manropeTextTheme().apply(
+  // switched to standard text theme to avoid network errors
+  final baseTextTheme = ThemeData.dark().textTheme.apply(
+    fontFamily: 'Manrope',
     bodyColor: darkTextPrimary,
     displayColor: darkTextPrimary,
   );
@@ -351,10 +355,7 @@ ThemeData buildAppDarkTheme() {
       ),
       shadowColor: darkShadowSoft,
     ),
-    dividerTheme: const DividerThemeData(
-      color: darkOutlineSoft,
-      thickness: 1,
-    ),
+    dividerTheme: const DividerThemeData(color: darkOutlineSoft, thickness: 1),
     navigationBarTheme: NavigationBarThemeData(
       backgroundColor: darkSurface,
       indicatorColor: AppColors.primary.withValues(alpha: 0.2),

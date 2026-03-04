@@ -280,7 +280,9 @@ class HomeScreen extends ConsumerWidget {
                         );
                       } else {
                         return SingleChildScrollView(
-                          padding: Responsive.getHomeContentPadding(screenWidth),
+                          padding: Responsive.getHomeContentPadding(
+                            screenWidth,
+                          ),
                           child: Center(
                             child: ConstrainedBox(
                               constraints: BoxConstraints(
@@ -322,9 +324,14 @@ class HomeScreen extends ConsumerWidget {
         final cardWidth = Responsive.getUnifiedProductCardWidth(width);
 
         // Calculate height based on card width and aspect ratio
-        final cardAspectRatio = UniversalProductCard.getCardAspectRatio(width, customCardWidth: cardWidth);
-        final overflowBuffer = 32.0; // Increased buffer for ListView padding and shadows
-        final estimatedCardHeight = (cardWidth / cardAspectRatio) + overflowBuffer;
+        final cardAspectRatio = UniversalProductCard.getCardAspectRatio(
+          width,
+          customCardWidth: cardWidth,
+        );
+        final overflowBuffer =
+            32.0; // Increased buffer for ListView padding and shadows
+        final estimatedCardHeight =
+            (cardWidth / cardAspectRatio) + overflowBuffer;
 
         // Wrap ListView in SizedBox with calculated height to provide bounded constraint
         // Use responsive horizontal padding matching unified constraints
@@ -453,8 +460,8 @@ class HomeScreen extends ConsumerWidget {
             final allProducts = ref.watch(shared.allProductsProvider);
             final categorySections = <Widget>[];
 
-            // Show top 3-4 categories with products
-            for (final category in categories.take(4)) {
+            // Show all categories with products
+            for (final category in categories) {
               final categoryProducts =
                   allProducts
                       .where(
@@ -695,8 +702,8 @@ class _InfiniteScrollHomeContentState
             final allProducts = ref.watch(shared.allProductsProvider);
             final categorySections = <Widget>[];
 
-            // Show top 3-4 categories with products
-            for (final category in categories.take(4)) {
+            // Show top categories with products
+            for (final category in categories.take(10)) {
               final categoryProducts =
                   allProducts
                       .where(
@@ -916,6 +923,7 @@ class _ImageCarouselState extends ConsumerState<_ImageCarousel> {
                           fit: BoxFit.cover,
                           height: widget.height,
                           width: double.infinity,
+                          useOriginalQuality: true,
                         );
                       },
                     ),

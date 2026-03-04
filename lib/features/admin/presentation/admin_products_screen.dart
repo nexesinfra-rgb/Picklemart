@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ionicons/ionicons.dart';
 import '../application/admin_product_controller.dart';
+import '../data/category_service.dart' as admin_cat;
 import '../../../core/layout/responsive.dart';
 import '../../../core/layout/responsive_grid.dart';
 import '../../../core/ui/responsive_buttons.dart';
@@ -162,6 +163,9 @@ class _AdminProductsScreenState extends ConsumerState<AdminProductsScreen> {
   Widget build(BuildContext context) {
     final productState = ref.watch(adminProductControllerProvider);
     final sharedState = ref.watch(sharedProductProvider);
+    final categoriesAsync = ref.watch(admin_cat.categoriesProvider);
+    final masterCategories =
+        categoriesAsync.valueOrNull?.map((c) => c.name).toList() ?? [];
     final screenSize = Responsive.getScreenSize(context);
     final width = MediaQuery.of(context).size.width;
     final foldableBreakpoint = Responsive.getFoldableBreakpoint(width);
@@ -190,6 +194,7 @@ class _AdminProductsScreenState extends ConsumerState<AdminProductsScreen> {
           context,
           productState,
           sharedState,
+          masterCategories,
           screenSize,
           foldableBreakpoint,
         ),
@@ -201,6 +206,7 @@ class _AdminProductsScreenState extends ConsumerState<AdminProductsScreen> {
     BuildContext context,
     AdminProductState productState,
     SharedProductState sharedState,
+    List<String> masterCategories,
     ScreenSize screenSize,
     FoldableBreakpoint foldableBreakpoint,
   ) {
@@ -237,6 +243,7 @@ class _AdminProductsScreenState extends ConsumerState<AdminProductsScreen> {
       context,
       productsToShow,
       sharedState,
+      masterCategories,
       screenSize,
       foldableBreakpoint,
     );
@@ -301,12 +308,18 @@ class _AdminProductsScreenState extends ConsumerState<AdminProductsScreen> {
   List<String> _getCategories(
     AdminProductState productState,
     SharedProductState sharedState,
+    List<String> masterCategories,
   ) {
     final products =
         productState.products.isNotEmpty
             ? productState.products
             : sharedState.products;
     final allCategories = <String>{'All'};
+
+    // Add master categories first
+    allCategories.addAll(masterCategories);
+
+    // Also include categories from products as fallback
     for (final product in products) {
       allCategories.addAll(product.categories);
     }
@@ -317,6 +330,7 @@ class _AdminProductsScreenState extends ConsumerState<AdminProductsScreen> {
     BuildContext context,
     AdminProductState productState,
     SharedProductState sharedState,
+    List<String> masterCategories,
     ScreenSize screenSize,
     FoldableBreakpoint foldableBreakpoint,
   ) {
@@ -386,9 +400,11 @@ class _AdminProductsScreenState extends ConsumerState<AdminProductsScreen> {
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
-                      ..._getCategories(productState, sharedState).map((
-                        category,
-                      ) {
+                      ..._getCategories(
+                        productState,
+                        sharedState,
+                        masterCategories,
+                      ).map((category) {
                         final isSelected =
                             productState.selectedCategory == category;
                         return Padding(

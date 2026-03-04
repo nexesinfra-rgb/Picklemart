@@ -31,6 +31,14 @@ class ProductRepositorySupabase implements ProductRepository {
         return 'image/webp';
       case 'gif':
         return 'image/gif';
+      case 'bmp':
+        return 'image/bmp';
+      case 'tiff':
+        return 'image/tiff';
+      case 'heic':
+        return 'image/heic';
+      case 'svg':
+        return 'image/svg+xml';
       case 'jpg':
       case 'jpeg':
       default:
@@ -41,14 +49,35 @@ class ProductRepositorySupabase implements ProductRepository {
   /// Fix image URL by replacing old domain with new one
   String _fixImageUrl(String url) {
     if (url.isEmpty) return url;
-    
+
+    // Fix for relative paths stored in DB (e.g. "products/...")
+    // This happens if the full URL wasn't saved, just the storage path
+    if (!url.startsWith('http') && !url.startsWith('https')) {
+      // Clean up leading slash
+      var path = url.startsWith('/') ? url.substring(1) : url;
+
+      // If it looks like a storage path or just a filename, construct the full URL
+      // We assume any non-http string that isn't clearly an asset is a storage path
+      if (!path.startsWith('assets/')) {
+        final baseUrl = Environment.supabaseUrl;
+
+        // Remove bucket name if it's already in the path to avoid duplication
+        if (path.startsWith('product-images/')) {
+          path = path.substring('product-images/'.length);
+        }
+
+        return '$baseUrl/storage/v1/object/public/product-images/$path';
+      }
+    }
+
     // Replace old sslip.io domain with new custom domain
-    const oldDomain = 'supabasekong-ogw8kswcww8swko0c8gswsks.72.62.229.227.sslip.io';
+    const oldDomain =
+        'supabasekong-ogw8kswcww8swko0c8gswsks.72.62.229.227.sslip.io';
     if (url.contains(oldDomain)) {
       // Use the configured Supabase URL from environment
       // Ensure we don't duplicate https:// if it's already in the replacement
       final baseUrl = Environment.supabaseUrl;
-      
+
       // Handle both http and https in the old URL
       if (url.startsWith('http://$oldDomain')) {
         return url.replaceFirst('http://$oldDomain', baseUrl);
@@ -56,7 +85,10 @@ class ProductRepositorySupabase implements ProductRepository {
         return url.replaceFirst('https://$oldDomain', baseUrl);
       } else {
         // Fallback for partial matches
-        return url.replaceAll(oldDomain, baseUrl.replaceFirst('https://', '').replaceFirst('http://', ''));
+        return url.replaceAll(
+          oldDomain,
+          baseUrl.replaceFirst('https://', '').replaceFirst('http://', ''),
+        );
       }
     }
     return url;
@@ -506,7 +538,8 @@ class ProductRepositorySupabase implements ProductRepository {
 
         // Parse images array
         final images = variantData['images'] as List<dynamic>?;
-        final imagesList = images?.map((img) => _fixImageUrl(img.toString())).toList() ?? [];
+        final imagesList =
+            images?.map((img) => _fixImageUrl(img.toString())).toList() ?? [];
 
         return Variant(
           sku: variantData['sku'] as String? ?? '',
@@ -853,7 +886,8 @@ class ProductRepositorySupabase implements ProductRepository {
 
     // Parse arrays
     final images = productData['images'] as List<dynamic>?;
-    final imagesList = images?.map((img) => _fixImageUrl(img.toString())).toList() ?? [];
+    final imagesList =
+        images?.map((img) => _fixImageUrl(img.toString())).toList() ?? [];
 
     final categories = productData['categories'] as List<dynamic>?;
     final categoriesList =
@@ -928,7 +962,8 @@ class ProductRepositorySupabase implements ProductRepository {
 
     // Parse arrays
     final images = productData['images'] as List<dynamic>?;
-    final imagesList = images?.map((img) => _fixImageUrl(img.toString())).toList() ?? [];
+    final imagesList =
+        images?.map((img) => _fixImageUrl(img.toString())).toList() ?? [];
 
     final categories = productData['categories'] as List<dynamic>?;
     final categoriesList =
@@ -996,14 +1031,14 @@ class ProductRepositorySupabase implements ProductRepository {
   @override
   Future<List<Product>> fetchAll() async {
     try {
-      // Limit to last 100 products to prevent loading all products at once
+      // Limit to last 1000 products to prevent loading all products at once
       final response = await _supabase
           .from('products')
           .select('*')
           .not('is_active', 'is', null)
           .eq('is_active', true)
           .order('created_at', ascending: false)
-          .limit(100);
+          .limit(1000);
 
       final productsData = List<Map<String, dynamic>>.from(response);
       if (productsData.isEmpty) return [];

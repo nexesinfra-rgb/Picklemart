@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import 'dart:io';
+import 'dart:io' as io;
 import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:ionicons/ionicons.dart';
-import '../core/utils/logger.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'core/utils/logger.dart';
+import 'core/widgets/lazy_image.dart';
 
 /// Comprehensive media upload widget with bottom sheet menu
 class MediaUploadWidget extends StatefulWidget {
@@ -174,21 +176,83 @@ class _MediaUploadWidgetState extends State<MediaUploadWidget> {
     final targetWidth = width ?? widget.width ?? double.infinity;
     final targetHeight = height ?? widget.height ?? 200;
 
-    // Handle Firebase URLs
-    if (imagePath.startsWith('https://firebasestorage.googleapis.com')) {
-      return Image.network(
-        imagePath,
+    // Handle network images (HTTP/HTTPS URLs) - works on both web and mobile
+    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+      return LazyImage(
+        imageUrl: imagePath,
         width: targetWidth,
         height: targetHeight,
         fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) {
+        errorWidget: Container(
+          width: targetWidth,
+          height: targetHeight,
+          color: Colors.grey.shade100,
+          child: const Center(
+            child: Icon(Icons.broken_image, color: Colors.red),
+          ),
+        ),
+      );
+    }
+
+    // Handle SVG data URLs (Web)
+    if (kIsWeb && imagePath.startsWith('data:image/svg+xml')) {
+      try {
+        final base64String = imagePath.split(',')[1];
+        final bytes = base64Decode(base64String);
+        return SvgPicture.memory(
+          bytes,
+          width: targetWidth,
+          height: targetHeight,
+          fit: BoxFit.cover,
+          placeholderBuilder:
+              (context) => Container(
+                width: targetWidth,
+                height: targetHeight,
+                color: Colors.grey.shade100,
+                child: const Center(child: CircularProgressIndicator()),
+              ),
+        );
+      } catch (e) {
+        Logger.error('Failed to decode SVG data URL', error: e);
+        // Fallthrough to standard image handling
+      }
+    }
+
+    // Handle local SVG files (Mobile)
+    if (!kIsWeb && imagePath.toLowerCase().endsWith('.svg')) {
+      final file = io.File(imagePath);
+      return FutureBuilder<Uint8List>(
+        future: file.readAsBytes(),
+        builder: (context, snapshot) {
+          if (snapshot.hasData) {
+            return SvgPicture.memory(
+              snapshot.data!,
+              width: targetWidth,
+              height: targetHeight,
+              fit: BoxFit.cover,
+              placeholderBuilder:
+                  (context) => Container(
+                    width: targetWidth,
+                    height: targetHeight,
+                    color: Colors.grey.shade100,
+                    child: const Center(child: CircularProgressIndicator()),
+                  ),
+            );
+          } else if (snapshot.hasError) {
+            return Container(
+              width: targetWidth,
+              height: targetHeight,
+              color: Colors.grey.shade100,
+              child: const Center(
+                child: Icon(Icons.broken_image, color: Colors.red),
+              ),
+            );
+          }
           return Container(
             width: targetWidth,
             height: targetHeight,
             color: Colors.grey.shade100,
-            child: const Center(
-              child: Icon(Icons.broken_image, color: Colors.red),
-            ),
+            child: const Center(child: CircularProgressIndicator()),
           );
         },
       );
@@ -197,7 +261,7 @@ class _MediaUploadWidgetState extends State<MediaUploadWidget> {
     // Handle local file paths and blob URLs
     try {
       if (kIsWeb) {
-        // On web, use Image.network for blob URLs
+        // On web, use Image.network for blob URLs and data URLs
         return Image.network(
           imagePath,
           width: targetWidth,
@@ -217,7 +281,7 @@ class _MediaUploadWidgetState extends State<MediaUploadWidget> {
       } else {
         // On mobile, use Image.file
         return Image.file(
-          File(imagePath),
+          io.File(imagePath),
           width: targetWidth,
           height: targetHeight,
           fit: BoxFit.cover,
@@ -590,6 +654,11 @@ class _MediaUploadWidgetState extends State<MediaUploadWidget> {
                   'jpeg',
                   'png',
                   'gif',
+                  'webp',
+                  'bmp',
+                  // 'heic', // Not supported by standard Flutter Image widget
+                  // 'tiff', // Not supported by standard Flutter Image widget
+                  'svg',
                   'pdf',
                   'mp4',
                   'mov',
@@ -597,7 +666,21 @@ class _MediaUploadWidgetState extends State<MediaUploadWidget> {
                   'mkv',
                 ]
                 : widget.allowImages
-                ? ['jpg', 'jpeg', 'png', 'gif', 'mp4', 'mov', 'avi', 'mkv']
+                ? [
+                  'jpg',
+                  'jpeg',
+                  'png',
+                  'gif',
+                  'webp',
+                  'bmp',
+                  // 'heic', // Not supported by standard Flutter Image widget
+                  // 'tiff', // Not supported by standard Flutter Image widget
+                  'svg',
+                  'mp4',
+                  'mov',
+                  'avi',
+                  'mkv',
+                ]
                 : ['pdf'],
         allowMultiple: false,
       );
@@ -626,17 +709,35 @@ class _MediaUploadWidgetState extends State<MediaUploadWidget> {
           // On mobile (Android/iOS), file.bytes is null, use file.path
           if (file.path != null) {
             try {
-              final fileObj = File(file.path!);
-              if (await fileObj.exists()) {
-                bytes = await fileObj.readAsBytes();
+              // Try to copy file to a temporary location to ensure we have access
+              final originalFile = io.File(file.path!);
+              if (await originalFile.exists()) {
+                // Use the file directly - file_picker usually provides accessible temporary paths
+                // But sometimes on Android (scoped storage), we might need to cache it
+                // For now, let's just use the path provided by file_picker as it handles caching
+                bytes = await originalFile.readAsBytes();
                 Logger.debug(
-                  'MediaUploadWidget: Read ${bytes.length} bytes from file path: ${file.path}',
+                  'MediaUploadWidget: Read ${bytes?.length ?? 0} bytes from file path: ${file.path}',
                 );
               } else {
-                throw Exception('Selected file does not exist: ${file.path}');
+                // If file doesn't exist at path, it might be a content URI that file_picker
+                // failed to resolve fully. In this case, we rely on file_picker to have cached it.
+                // If we are here, it means file.path is not accessible.
+                throw Exception(
+                  'Selected file cannot be accessed at: ${file.path}',
+                );
               }
             } catch (e) {
-              Logger.error('MediaUploadWidget: Error reading file from path', error: e);
+              Logger.error(
+                'MediaUploadWidget: Error reading file from path',
+                error: e,
+              );
+              // Enhance error message for user
+              if (e.toString().contains('Permission denied')) {
+                throw Exception(
+                  'Permission denied: Unable to access the selected file.',
+                );
+              }
               throw Exception('Failed to read selected file: $e');
             }
           } else {
@@ -655,22 +756,24 @@ class _MediaUploadWidgetState extends State<MediaUploadWidget> {
             final base64 = base64Encode(bytes);
             String mimeType;
             if (fileType == MediaFileType.image) {
-              mimeType = fileName.toLowerCase().endsWith('.png')
-                  ? 'image/png'
-                  : fileName.toLowerCase().endsWith('.gif')
-                  ? 'image/gif'
-                  : fileName.toLowerCase().endsWith('.webp')
-                  ? 'image/webp'
-                  : 'image/jpeg';
+              mimeType =
+                  fileName.toLowerCase().endsWith('.png')
+                      ? 'image/png'
+                      : fileName.toLowerCase().endsWith('.gif')
+                      ? 'image/gif'
+                      : fileName.toLowerCase().endsWith('.webp')
+                      ? 'image/webp'
+                      : 'image/jpeg';
             } else if (fileType == MediaFileType.pdf) {
               mimeType = 'application/pdf';
             } else {
               // Video
-              mimeType = fileName.toLowerCase().endsWith('.mp4')
-                  ? 'video/mp4'
-                  : fileName.toLowerCase().endsWith('.mov')
-                  ? 'video/quicktime'
-                  : 'video/*';
+              mimeType =
+                  fileName.toLowerCase().endsWith('.mp4')
+                      ? 'video/mp4'
+                      : fileName.toLowerCase().endsWith('.mov')
+                      ? 'video/quicktime'
+                      : 'video/*';
             }
             path = 'data:$mimeType;base64,$base64';
           } else {
@@ -699,7 +802,9 @@ class _MediaUploadWidgetState extends State<MediaUploadWidget> {
           );
         }
       } else {
-        Logger.warning('MediaUploadWidget: No file selected or result is empty');
+        Logger.warning(
+          'MediaUploadWidget: No file selected or result is empty',
+        );
         return null;
       }
     } catch (e) {
@@ -794,8 +899,10 @@ class _MediaUploadWidgetState extends State<MediaUploadWidget> {
     StateSetter setModalState,
   ) async {
     if (kDebugMode) {
-            Logger.debug('🎬 MediaUploadWidget: Starting multiple media selection...');
-            Logger.debug(
+      Logger.debug(
+        '🎬 MediaUploadWidget: Starting multiple media selection...',
+      );
+      Logger.debug(
         '📊 MediaUploadWidget: Current _selectedMedia count: ${_selectedMedia.length}',
       );
     }
@@ -881,8 +988,8 @@ class _MediaUploadWidgetState extends State<MediaUploadWidget> {
     StateSetter setModalState,
   ) async {
     if (kDebugMode) {
-            Logger.debug('🎬 MediaUploadWidget: Starting media selection...');
-            Logger.debug(
+      Logger.debug('🎬 MediaUploadWidget: Starting media selection...');
+      Logger.debug(
         '📊 MediaUploadWidget: Current _selectedMedia count: ${_selectedMedia.length}',
       );
     }
@@ -954,7 +1061,9 @@ class _MediaUploadWidgetState extends State<MediaUploadWidget> {
     } catch (e) {
       if (kDebugMode) {
         Logger.debug('💥 MediaUploadWidget: Error selecting media: $e');
-        Logger.debug('📊 MediaUploadWidget: Stack trace: ${StackTrace.current}');
+        Logger.debug(
+          '📊 MediaUploadWidget: Stack trace: ${StackTrace.current}',
+        );
       }
 
       // Show immediate error feedback
@@ -1024,7 +1133,7 @@ class _MediaUploadWidgetState extends State<MediaUploadWidget> {
 
   void _finalizeUpload() {
     if (kDebugMode) {
-            Logger.debug(
+      Logger.debug(
         '🚀 MediaUploadWidget: Finalizing upload with ${_selectedMedia.length} items',
       );
     }
@@ -1093,7 +1202,7 @@ class _MediaUploadWidgetState extends State<MediaUploadWidget> {
 
   void _cancelUpload() {
     if (kDebugMode) {
-            Logger.debug(
+      Logger.debug(
         '❌ MediaUploadWidget: Cancelling upload, clearing ${_selectedMedia.length} items',
       );
     }
@@ -1104,7 +1213,7 @@ class _MediaUploadWidgetState extends State<MediaUploadWidget> {
 
   void _removeSelectedMedia(int index, StateSetter setModalState) {
     if (kDebugMode) {
-            Logger.debug('🗑️ MediaUploadWidget: Removing media at index $index');
+      Logger.debug('🗑️ MediaUploadWidget: Removing media at index $index');
     }
 
     setState(() {
@@ -1161,16 +1270,16 @@ class _MediaUploadBottomSheetState extends State<MediaUploadBottomSheet> {
   @override
   Widget build(BuildContext context) {
     if (kDebugMode) {
-            Logger.debug(
+      Logger.debug(
         '📱 MediaUploadBottomSheet: Building with ${widget.selectedMedia.length} selected items',
       );
-            Logger.debug(
+      Logger.debug(
         '📋 MediaUploadBottomSheet: Selected media files: ${widget.selectedMedia.map((m) => m.fileName).join(', ')}',
       );
-            Logger.debug(
+      Logger.debug(
         '🔍 MediaUploadBottomSheet: Will show preview: ${widget.selectedMedia.isNotEmpty}',
       );
-            Logger.debug(
+      Logger.debug(
         '🔍 MediaUploadBottomSheet: Will show upload button: ${widget.selectedMedia.isNotEmpty}',
       );
     }
@@ -1553,7 +1662,7 @@ class _MediaUploadBottomSheetState extends State<MediaUploadBottomSheet> {
     final targetHeight = height ?? 120;
 
     if (kDebugMode) {
-            Logger.debug(
+      Logger.debug(
         '🖼️ MediaUploadBottomSheet: Building image widget for path: $imagePath',
       );
     }
@@ -1594,7 +1703,9 @@ class _MediaUploadBottomSheetState extends State<MediaUploadBottomSheet> {
           fit: BoxFit.cover,
           errorBuilder: (context, error, stackTrace) {
             if (kDebugMode) {
-              Logger.debug('💥 MediaUploadBottomSheet: Image.network error: $error');
+              Logger.debug(
+                '💥 MediaUploadBottomSheet: Image.network error: $error',
+              );
             }
             return Container(
               width: targetWidth,
@@ -1609,13 +1720,15 @@ class _MediaUploadBottomSheetState extends State<MediaUploadBottomSheet> {
       } else {
         // On mobile, use Image.file
         return Image.file(
-          File(imagePath),
+          io.File(imagePath),
           width: targetWidth,
           height: targetHeight,
           fit: BoxFit.cover,
           errorBuilder: (context, error, stackTrace) {
             if (kDebugMode) {
-              Logger.debug('💥 MediaUploadBottomSheet: Image.file error: $error');
+              Logger.debug(
+                '💥 MediaUploadBottomSheet: Image.file error: $error',
+              );
             }
             return Container(
               width: targetWidth,
