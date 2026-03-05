@@ -168,8 +168,6 @@ class PurchaseOrderPdfService {
                             '${manufacturer.city}, ${manufacturer.state}',
                           ),
                           pw.Text('Phone: ${manufacturer.phone}'),
-                          if (manufacturer.gstNumber.isNotEmpty)
-                            pw.Text('GSTIN: ${manufacturer.gstNumber}'),
                         ] else ...[
                           pw.Text(
                             'Unknown Manufacturer',

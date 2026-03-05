@@ -111,7 +111,7 @@ class CreditSystemController extends StateNotifier<CreditSystemState> {
   }
 
   /// Create a new credit transaction
-  Future<bool> createTransaction({
+  Future<CreditTransaction?> createTransaction({
     String? manufacturerId,
     String? entityName,
     required CreditTransactionType transactionType,
@@ -127,7 +127,7 @@ class CreditSystemController extends StateNotifier<CreditSystemState> {
     }
 
     try {
-      await _repository.createCreditTransaction(
+      final transaction = await _repository.createCreditTransaction(
         manufacturerId: manufacturerId,
         entityName: entityName,
         transactionType: transactionType,
@@ -155,12 +155,12 @@ class CreditSystemController extends StateNotifier<CreditSystemState> {
       if (mounted) {
         state = state.copyWith(isLoading: false);
       }
-      return true;
+      return transaction;
     } catch (e) {
       if (mounted) {
         state = state.copyWith(isLoading: false, error: e.toString());
       }
-      return false;
+      return null;
     }
   }
 

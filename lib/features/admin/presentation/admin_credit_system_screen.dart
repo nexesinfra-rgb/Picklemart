@@ -47,6 +47,11 @@ class _AdminCreditSystemScreenState
         showBackButton: true,
         actions: [
           ResponsiveIconButton(
+            icon: const Icon(Ionicons.trash_outline, color: Colors.red),
+            onPressed: () => _showClearConfirmationDialog(context),
+            tooltip: 'Clear All',
+          ),
+          ResponsiveIconButton(
             icon: const Icon(Ionicons.refresh_outline),
             onPressed: () {
               ref.read(creditSystemControllerProvider.notifier).refresh();
@@ -1050,6 +1055,33 @@ class _AdminCreditSystemScreenState
     );
   }
 
+  void _showClearConfirmationDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Clear Cash Book'),
+            content: const Text(
+              'Are you sure you want to delete ALL cash book entries? This action cannot be undone.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  ref.read(cashBookControllerProvider.notifier).clearAll();
+                },
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                child: const Text('Clear All'),
+              ),
+            ],
+          ),
+    );
+  }
+
   String _formatDate(DateTime date) {
     return '${date.day}/${date.month}/${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
   }
@@ -1245,7 +1277,7 @@ class _AddCreditTransactionDialogState
                         authState != null) {
                       try {
                         // 1. Add to Credit System (Legacy/Manufacturer Balance)
-                        final success = await ref
+                        final transaction = await ref
                             .read(creditSystemControllerProvider.notifier)
                             .createTransaction(
                               entityName: _entityNameController.text.trim(),
@@ -1264,7 +1296,7 @@ class _AddCreditTransactionDialogState
                               transactionDate: _selectedDate,
                             );
 
-                        if (!success) {
+                        if (transaction == null) {
                           final error =
                               ref.read(creditSystemControllerProvider).error;
                           if (mounted) {
@@ -1308,6 +1340,7 @@ class _AddCreditTransactionDialogState
                                     _selectedPaymentMethod?.displayName ??
                                     'Cash',
                                 createdBy: authState.id,
+                                relatedId: transaction.id, // Link to credit transaction
                               ),
                             );
 

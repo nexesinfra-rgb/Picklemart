@@ -320,10 +320,6 @@ class PurchaseOrderPdfService {
               '${manufacturer.city ?? ''}-${manufacturer.state ?? ''}',
               style: pw.TextStyle(fontSize: 9, color: _textColor),
             ),
-            pw.Text(
-              'GST: ${manufacturer.gstNumber}',
-              style: pw.TextStyle(fontSize: 8, color: _textColor),
-            ),
           ] else
             pw.Text(
               'Unknown Manufacturer',

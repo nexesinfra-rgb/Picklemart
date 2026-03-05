@@ -143,6 +143,22 @@ class CashBookController extends StateNotifier<CashBookState> {
   Future<void> refresh() async {
     await loadEntries();
   }
+
+  Future<void> clearAll() async {
+    if (mounted) {
+      state = state.copyWith(isLoading: true, error: null);
+    }
+
+    try {
+      await _repository.clearAllEntries();
+      await loadEntries();
+    } catch (e) {
+      if (mounted) {
+        state = state.copyWith(isLoading: false, error: e.toString());
+      }
+      rethrow;
+    }
+  }
 }
 
 final cashBookControllerProvider =

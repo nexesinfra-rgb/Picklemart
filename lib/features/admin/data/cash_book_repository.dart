@@ -331,4 +331,23 @@ class CashBookRepository {
       rethrow;
     }
   }
+
+  Future<void> clearAllEntries() async {
+    try {
+      // Try using the efficient RPC first
+      await _supabase.rpc('clear_cash_book');
+    } catch (e) {
+      // Fallback: Delete using a condition that matches all rows
+      // We use amount > -1 which should cover all positive amounts
+      // Since amount is double precision, this is safe.
+      // Note: This still requires the DELETE policy to be fixed.
+      try {
+        await _supabase.from('cash_book').delete().gte('amount', -1);
+      } catch (e2) {
+        throw Exception(
+          'Failed to clear cash book. Please ensure the "clear_cash_book" RPC exists or DELETE policy is enabled. Error: $e2',
+        );
+      }
+    }
+  }
 }

@@ -73,12 +73,7 @@ class ResponsiveProductCard extends ConsumerWidget {
                   Container(
                     width: double.infinity,
                     color: const Color(0xFFF8F9FA), // Light grey background
-                    child: LazyImage(
-                      imageUrl: product.imageUrl,
-                      fit: BoxFit.cover,
-                      width: double.infinity,
-                      height: double.infinity,
-                    ),
+                    child: _buildProductImage(product),
                   ),
                   if (product.isOutOfStock)
                     Positioned.fill(
@@ -228,6 +223,67 @@ class ResponsiveProductCard extends ConsumerWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProductImage(Product product) {
+    // Primary image attempt
+    return LazyImage(
+      imageUrl: product.imageUrl,
+      fit: BoxFit.cover,
+      width: double.infinity,
+      height: double.infinity,
+      errorWidget: Container(
+        width: double.infinity,
+        height: double.infinity,
+        color: const Color(0xFFF8F9FA),
+        child: Builder(
+          builder: (context) {
+            // Fallback 1: Try first image from gallery if available and different from primary
+            if (product.images.isNotEmpty) {
+              final fallbackUrl = product.images.first;
+              if (fallbackUrl != product.imageUrl) {
+                return LazyImage(
+                  imageUrl: fallbackUrl,
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  height: double.infinity,
+                  // Fallback 2: Try second image if available
+                  errorWidget: Builder(
+                    builder: (context) {
+                      if (product.images.length > 1) {
+                        final fallbackUrl2 = product.images[1];
+                        return LazyImage(
+                          imageUrl: fallbackUrl2,
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          height: double.infinity,
+                        );
+                      }
+                      // No more fallbacks, show default placeholder
+                      return const Center(
+                        child: Icon(
+                          Icons.image_not_supported_outlined,
+                          color: Colors.grey,
+                          size: 24,
+                        ),
+                      );
+                    },
+                  ),
+                );
+              }
+            }
+            // No gallery images or same as primary, show default placeholder
+            return const Center(
+              child: Icon(
+                Icons.image_not_supported_outlined,
+                color: Colors.grey,
+                size: 24,
+              ),
+            );
+          },
         ),
       ),
     );

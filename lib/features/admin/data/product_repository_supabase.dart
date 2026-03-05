@@ -47,14 +47,18 @@ class ProductRepositorySupabase implements ProductRepository {
   }
 
   /// Fix image URL by replacing old domain with new one
-  String _fixImageUrl(String url) {
-    if (url.isEmpty) return url;
+  String _fixImageUrl(String? url) {
+    if (url == null) return '';
+    if (url.trim().isEmpty) return '';
+    
+    // Work with a non-null string from here
+    String fixedUrl = url.trim();
 
     // Fix for relative paths stored in DB (e.g. "products/...")
     // This happens if the full URL wasn't saved, just the storage path
-    if (!url.startsWith('http') && !url.startsWith('https')) {
+    if (!fixedUrl.startsWith('http') && !fixedUrl.startsWith('https')) {
       // Clean up leading slash
-      var path = url.startsWith('/') ? url.substring(1) : url;
+      var path = fixedUrl.startsWith('/') ? fixedUrl.substring(1) : fixedUrl;
 
       // If it looks like a storage path or just a filename, construct the full URL
       // We assume any non-http string that isn't clearly an asset is a storage path
@@ -65,6 +69,11 @@ class ProductRepositorySupabase implements ProductRepository {
         if (path.startsWith('product-images/')) {
           path = path.substring('product-images/'.length);
         }
+        
+        // Handle cases where path might start with a slash after removing bucket
+        if (path.startsWith('/')) {
+            path = path.substring(1);
+        }
 
         return '$baseUrl/storage/v1/object/public/product-images/$path';
       }
@@ -73,25 +82,25 @@ class ProductRepositorySupabase implements ProductRepository {
     // Replace old sslip.io domain with new custom domain
     const oldDomain =
         'supabasekong-ogw8kswcww8swko0c8gswsks.72.62.229.227.sslip.io';
-    if (url.contains(oldDomain)) {
+    if (fixedUrl.contains(oldDomain)) {
       // Use the configured Supabase URL from environment
       // Ensure we don't duplicate https:// if it's already in the replacement
       final baseUrl = Environment.supabaseUrl;
 
       // Handle both http and https in the old URL
-      if (url.startsWith('http://$oldDomain')) {
-        return url.replaceFirst('http://$oldDomain', baseUrl);
-      } else if (url.startsWith('https://$oldDomain')) {
-        return url.replaceFirst('https://$oldDomain', baseUrl);
+      if (fixedUrl.startsWith('http://$oldDomain')) {
+        return fixedUrl.replaceFirst('http://$oldDomain', baseUrl);
+      } else if (fixedUrl.startsWith('https://$oldDomain')) {
+        return fixedUrl.replaceFirst('https://$oldDomain', baseUrl);
       } else {
         // Fallback for partial matches
-        return url.replaceAll(
+        return fixedUrl.replaceAll(
           oldDomain,
           baseUrl.replaceFirst('https://', '').replaceFirst('http://', ''),
         );
       }
     }
-    return url;
+    return fixedUrl;
   }
 
   /// Upload product images to Supabase Storage
@@ -889,6 +898,12 @@ class ProductRepositorySupabase implements ProductRepository {
     final imagesList =
         images?.map((img) => _fixImageUrl(img.toString())).toList() ?? [];
 
+    // Ensure we have a valid image URL by falling back to the first image in gallery if needed
+    String imageUrl = _fixImageUrl(productData['image_url'] as String?);
+    if (imageUrl.isEmpty && imagesList.isNotEmpty) {
+      imageUrl = imagesList.first;
+    }
+
     final categories = productData['categories'] as List<dynamic>?;
     final categoriesList =
         categories?.map((cat) => cat.toString()).toList() ?? [];
@@ -936,7 +951,7 @@ class ProductRepositorySupabase implements ProductRepository {
       createdAt: createdAt,
       updatedAt: updatedAt,
       stock: productData['stock'] as int? ?? 0,
-      imageUrl: _fixImageUrl(productData['image_url'] as String? ?? ''),
+      imageUrl: imageUrl,
       images: imagesList,
       categories: categoriesList,
       tags: tagsList,
@@ -964,6 +979,12 @@ class ProductRepositorySupabase implements ProductRepository {
     final images = productData['images'] as List<dynamic>?;
     final imagesList =
         images?.map((img) => _fixImageUrl(img.toString())).toList() ?? [];
+
+    // Ensure we have a valid image URL by falling back to the first image in gallery if needed
+    String imageUrl = _fixImageUrl(productData['image_url'] as String?);
+    if (imageUrl.isEmpty && imagesList.isNotEmpty) {
+      imageUrl = imagesList.first;
+    }
 
     final categories = productData['categories'] as List<dynamic>?;
     final categoriesList =
@@ -1012,7 +1033,7 @@ class ProductRepositorySupabase implements ProductRepository {
       createdAt: createdAt,
       updatedAt: updatedAt,
       stock: productData['stock'] as int? ?? 0,
-      imageUrl: _fixImageUrl(productData['image_url'] as String? ?? ''),
+      imageUrl: imageUrl,
       images: imagesList,
       categories: categoriesList,
       tags: tagsList,
