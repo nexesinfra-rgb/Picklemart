@@ -8,6 +8,7 @@ import '../application/admin_order_controller.dart';
 import '../application/admin_customer_controller.dart';
 import '../application/purchase_order_controller.dart';
 import '../application/manufacturer_controller.dart';
+import '../application/cash_book_controller.dart';
 import '../data/payment_receipt_repository.dart';
 import '../data/credit_transaction_repository.dart';
 import '../domain/purchase_order.dart';
@@ -174,8 +175,10 @@ class _AdminCustomerOrdersScreenState
 
     // Refresh controllers
     ref.read(adminOrderControllerProvider.notifier).refresh();
+    ref.read(adminCustomerControllerProvider.notifier).refresh();
     ref.read(purchaseOrderControllerProvider.notifier).refresh();
     ref.read(manufacturerControllerProvider.notifier).loadManufacturers();
+    ref.read(cashBookControllerProvider.notifier).refresh();
 
     // Reload credit transactions if it's a manufacturer
     final customerState = ref.read(adminCustomerControllerProvider);

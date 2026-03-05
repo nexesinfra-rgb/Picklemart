@@ -7,7 +7,7 @@ import '../../catalog/data/product.dart';
 import '../data/shared_customers_provider.dart';
 import '../data/shared_manufacturers_provider.dart';
 import '../domain/manufacturer.dart';
-import '../application/admin_customer_controller.dart';
+import 'admin_customer_controller.dart';
 import '../data/customer_repository_provider.dart';
 import '../../orders/data/order_repository_provider.dart';
 import '../data/multi_device_repository.dart';

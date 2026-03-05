@@ -208,9 +208,9 @@ class MockOrderRepositorySupabase extends _i1.Mock
           as _i5.Future<Map<String, dynamic>>);
 
   @override
-  _i5.Stream<List<_i2.Order>> subscribeToUserOrders(String? userId) =>
+  _i5.Stream<List<_i2.Order>> watchUserOrders(String? userId) =>
       (super.noSuchMethod(
-            Invocation.method(#subscribeToUserOrders, [userId]),
+            Invocation.method(#watchUserOrders, [userId]),
             returnValue: _i5.Stream<List<_i2.Order>>.empty(),
           )
           as _i5.Stream<List<_i2.Order>>);
@@ -285,6 +285,14 @@ class MockOrderRepositorySupabase extends _i1.Mock
             returnValue: _i5.Future<bool>.value(false),
           )
           as _i5.Future<bool>);
+
+  @override
+  _i5.Stream<void> subscribeToUserOrders() =>
+      (super.noSuchMethod(
+            Invocation.method(#subscribeToUserOrders, []),
+            returnValue: _i5.Stream<void>.empty(),
+          )
+          as _i5.Stream<void>);
 }
 
 /// A class which mocks [PaymentReceiptRepository].
@@ -431,6 +439,8 @@ class MockPaymentReceiptRepository extends _i1.Mock
     double? amount,
     String? paymentType,
     String? description,
+    String? customerName,
+    String? customerPhone,
   }) =>
       (super.noSuchMethod(
             Invocation.method(#updatePaymentReceipt, [], {
@@ -438,6 +448,8 @@ class MockPaymentReceiptRepository extends _i1.Mock
               #amount: amount,
               #paymentType: paymentType,
               #description: description,
+              #customerName: customerName,
+              #customerPhone: customerPhone,
             }),
             returnValue: _i5.Future<bool>.value(false),
           )

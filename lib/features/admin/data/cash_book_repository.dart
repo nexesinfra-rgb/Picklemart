@@ -14,11 +14,14 @@ class CashBookRepository {
 
   Future<void> addEntry(CashBookEntry entry) async {
     try {
+      print('DEBUG REPO: About to insert cashbook entry: ${entry.toJson()}');
       await _supabase.from('cash_book').insert(entry.toJson());
+      print('DEBUG REPO: Cashbook entry inserted successfully');
       if (entry.relatedId != null) {
         await updateAccountBalance(entry.relatedId!);
       }
     } catch (e) {
+      print('DEBUG REPO: Error adding cashbook entry: $e');
       // Re-throw to be handled by the caller
       rethrow;
     }
@@ -210,34 +213,48 @@ class CashBookRepository {
 
   Future<Map<String, double>> getTotals() async {
     try {
+      print('DEBUG REPO: Calling get_cash_book_totals RPC');
       final response = await _supabase.rpc('get_cash_book_totals');
+      print('DEBUG REPO: RPC response: $response');
       if (response == null) {
         return {'total_payin': 0.0, 'total_payout': 0.0, 'balance': 0.0};
       }
+      // Handle both String and int/double from RPC
+      final payinRaw = response['total_payin'];
+      final payoutRaw = response['total_payout'];
+      final balanceRaw = response['balance'];
+      
       return {
-        'total_payin': (response['total_payin'] as num).toDouble(),
-        'total_payout': (response['total_payout'] as num).toDouble(),
-        'balance': (response['balance'] as num).toDouble(),
+        'total_payin': (payinRaw is String ? double.parse(payinRaw) : (payinRaw as num).toDouble()),
+        'total_payout': (payoutRaw is String ? double.parse(payoutRaw) : (payoutRaw as num).toDouble()),
+        'balance': (balanceRaw is String ? double.parse(balanceRaw) : (balanceRaw as num).toDouble()),
       };
     } catch (e) {
+      print('DEBUG REPO: RPC failed, trying fallback: $e');
       // If RPC fails, fallback to manual calculation (less efficient but safe)
-      final allEntries = await _supabase
-          .from('cash_book')
-          .select('amount, entry_type');
-      double payin = 0;
-      double payout = 0;
-      for (final entry in allEntries as List) {
-        if (entry['entry_type'] == 'payin') {
-          payin += (entry['amount'] as num).toDouble();
-        } else {
-          payout += (entry['amount'] as num).toDouble();
+      try {
+        final allEntries = await _supabase
+            .from('cash_book')
+            .select('amount, entry_type');
+        print('DEBUG REPO: Fallback got ${(allEntries as List).length} entries');
+        double payin = 0;
+        double payout = 0;
+        for (final entry in allEntries as List) {
+          if (entry['entry_type'] == 'payin') {
+            payin += (entry['amount'] as num).toDouble();
+          } else {
+            payout += (entry['amount'] as num).toDouble();
+          }
         }
+        return {
+          'total_payin': payin,
+          'total_payout': payout,
+          'balance': payin - payout,
+        };
+      } catch (fallbackError) {
+        print('DEBUG REPO: Fallback also failed: $fallbackError');
+        return {'total_payin': 0.0, 'total_payout': 0.0, 'balance': 0.0};
       }
-      return {
-        'total_payin': payin,
-        'total_payout': payout,
-        'balance': payin - payout,
-      };
     }
   }
 
@@ -315,6 +332,107 @@ class CashBookRepository {
       await _supabase.from('cash_book').delete().eq('related_id', relatedId);
     } catch (e) {
       rethrow;
+    }
+  }
+
+  Future<int> deleteEntryByReference(
+    String referenceId,
+    String? referenceType,
+  ) async {
+    try {
+      print('DEBUG: Trying to delete cashbook entry with ID: $referenceId, type: $referenceType');
+      int deletedCount = 0;
+      
+      // Try with reference_id
+      var query = _supabase.from('cash_book').delete().eq('reference_id', referenceId);
+      if (referenceType != null) {
+        query = query.eq('reference_type', referenceType);
+      }
+      var result = await query.select();
+      print('DEBUG: Deleted by reference_id, count: ${result.length}');
+      deletedCount += result.length;
+      
+      // If nothing deleted, try with related_id
+      if (deletedCount == 0) {
+        print('DEBUG: No entry found by reference_id, trying related_id');
+        var query2 = _supabase.from('cash_book').delete().eq('related_id', referenceId);
+        result = await query2.select();
+        print('DEBUG: Deleted by related_id, count: ${result.length}');
+        deletedCount += result.length;
+      }
+      
+      // Last resort - try with payment_id column if it exists
+      if (deletedCount == 0) {
+        print('DEBUG: Still nothing, trying payment_id');
+        try {
+          var query3 = _supabase.from('cash_book').delete().eq('payment_id', referenceId);
+          result = await query3.select();
+          print('DEBUG: Deleted by payment_id, count: ${result.length}');
+          deletedCount += result.length;
+        } catch (e) {
+          print('DEBUG: payment_id column does not exist');
+        }
+      }
+
+      return deletedCount;
+    } catch (e) {
+      print('DEBUG: Error deleting entry: $e');
+      rethrow;
+    }
+  }
+
+  /// Get cashbook entry by reference ID and type
+  Future<CashBookEntry?> getEntryByReference(
+    String referenceId,
+    String referenceType,
+  ) async {
+    try {
+      final response = await _supabase
+          .from('cash_book')
+          .select()
+          .eq('reference_id', referenceId)
+          .eq('reference_type', referenceType)
+          .maybeSingle();
+
+      if (response == null) return null;
+      return CashBookEntry.fromJson(Map<String, dynamic>.from(response));
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Delete a cash book entry by matching relatedId, amount, and date.
+  /// This is used as a fallback for deleting legacy entries created before
+  /// the reference_id system was implemented.
+  Future<void> deleteEntryByFuzzyMatch({
+    required String relatedId,
+    required double amount,
+    required DateTime date,
+  }) async {
+    try {
+      // Find matching entries
+      // We check for related_id (manufacturer_id) and amount match.
+      // Date matching is tricky due to timestamp precision, so we check the same day.
+      final startOfDay = DateTime(date.year, date.month, date.day);
+      final endOfDay = startOfDay.add(const Duration(days: 1));
+
+      final response = await _supabase
+          .from('cash_book')
+          .select('id')
+          .eq('related_id', relatedId)
+          .eq('amount', amount)
+          .gte('transaction_date', startOfDay.toIso8601String())
+          .lt('transaction_date', endOfDay.toIso8601String())
+          .limit(1); // Delete one at a time to be safe
+
+      if ((response as List).isNotEmpty) {
+        final id = response[0]['id'] as String;
+        await _supabase.from('cash_book').delete().eq('id', id);
+        await updateAccountBalance(relatedId);
+      }
+    } catch (e) {
+      // Log error but don't rethrow to avoid breaking the main flow
+      print('Error in deleteEntryByFuzzyMatch: $e');
     }
   }
 

@@ -1330,6 +1330,16 @@ class AdminOrderController extends StateNotifier<AdminOrderState> {
           selectedOrder:
               state.selectedOrder?.id == orderId ? null : state.selectedOrder,
         );
+
+        // Refresh customer list to update balance in background
+        try {
+          _ref.read(adminCustomerControllerProvider.notifier).refresh();
+        } catch (e) {
+          if (kDebugMode) {
+            print('Note: Could not refresh customer list after order deletion: $e');
+          }
+        }
+
         return true;
       }
       return false;

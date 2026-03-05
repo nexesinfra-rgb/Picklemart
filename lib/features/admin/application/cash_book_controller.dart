@@ -54,6 +54,7 @@ class CashBookController extends StateNotifier<CashBookState> {
     DateTime? endDate,
     CashBookEntryType? type,
   }) async {
+    print('DEBUG CONTROLLER: loadEntries called');
     if (mounted) {
       state = state.copyWith(isLoading: true, error: null);
     }
@@ -70,6 +71,7 @@ class CashBookController extends StateNotifier<CashBookState> {
       ]);
 
       final entries = results[0] as List<CashBookEntry>;
+      print('DEBUG CONTROLLER: Got ${entries.length} entries from repository');
       final totals = results[1] as Map<String, double>;
       final count = results[2] as int;
 

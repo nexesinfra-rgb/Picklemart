@@ -7,7 +7,9 @@ import 'package:intl/intl.dart';
 import '../application/admin_customer_controller.dart';
 import '../application/admin_dashboard_controller.dart';
 import '../application/cash_book_controller.dart';
+import '../data/cash_book_repository.dart';
 import '../data/payment_receipt_repository.dart' as repo;
+import '../data/payment_cashbook_link_repository.dart';
 import '../domain/cash_book_entry.dart';
 import '../domain/manufacturer.dart';
 import '../application/manufacturer_controller.dart';
@@ -240,7 +242,7 @@ class _AdminAddPaymentScreenState extends ConsumerState<AdminAddPaymentScreen> {
         // Manufacturer Payment Logic (Payment In / Refund)
 
         // Create Credit Transaction (Payout = Manufacturer pays Admin)
-        await ref
+        final newTransaction = await ref
             .read(creditTransactionRepositoryProvider)
             .createCreditTransaction(
               manufacturerId: _selectedManufacturer!.id,
@@ -258,7 +260,7 @@ class _AdminAddPaymentScreenState extends ConsumerState<AdminAddPaymentScreen> {
 
         // Record in Cash Book (Payin)
         // Use cashBookController.addEntry which handles refresh automatically
-        ref
+        await ref
             .read(cashBookControllerProvider.notifier)
             .addEntry(
               CashBookEntry(
@@ -269,26 +271,49 @@ class _AdminAddPaymentScreenState extends ConsumerState<AdminAddPaymentScreen> {
                     'Payment In from ${_selectedManufacturer!.name}. ${_descriptionController.text}',
                 date: _selectedDate,
                 relatedId: _selectedManufacturer!.id,
+                referenceId: newTransaction.id,
+                referenceType: 'payment_out',
                 paymentMethod: _selectedPaymentType.displayName,
                 createdBy: user.id,
               ),
             )
             .catchError((e) {
-          if (kDebugMode) {
-            print('Error recording cash book entry: $e');
-          }
+          // Always print error - not just debug mode
+          print('ERROR: Error recording cash book entry: $e');
         });
+
+        // Create link between payment and cashbook entry
+        try {
+          final cashBookRepo = ref.read(cashBookRepositoryProvider);
+          final entry = await cashBookRepo.getEntryByReference(
+            newTransaction.id,
+            'payment_out',
+          );
+          if (entry != null && entry.id != null) {
+            final linkRepo = ref.read(paymentCashbookLinkRepositoryProvider);
+            await linkRepo.createLink(
+              paymentId: newTransaction.id,
+              paymentType: 'payment_out',
+              cashBookEntryId: entry.id!,
+            );
+          }
+        } catch (e) {
+          if (kDebugMode) {
+            print('Error creating payment-cashbook link: $e');
+          }
+        }
       }
 
       // Refresh admin data to update balances for both customers and manufacturers
       ref.read(adminCustomerControllerProvider.notifier).refresh();
       ref.read(manufacturerControllerProvider.notifier).refresh();
 
-      // Always refresh dashboard for total balance stats
+      // Always refresh cashbook and dashboard for total balance stats
       try {
+        ref.read(cashBookControllerProvider.notifier).refresh();
         ref.read(adminDashboardControllerProvider.notifier).refresh();
       } catch (e) {
-        // Ignore dashboard refresh errors
+        // Ignore refresh errors
       }
 
       if (mounted) {

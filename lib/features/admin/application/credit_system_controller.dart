@@ -3,6 +3,7 @@ import '../../../core/providers/supabase_provider.dart';
 import '../domain/credit_transaction.dart';
 import '../data/credit_transaction_repository.dart';
 import 'admin_customer_controller.dart';
+import 'cash_book_controller.dart';
 
 class CreditSystemState {
   final List<CreditTransaction> transactions;
@@ -43,8 +44,7 @@ class CreditSystemState {
 
 class CreditSystemController extends StateNotifier<CreditSystemState> {
   CreditSystemController(this._ref) : super(const CreditSystemState()) {
-    final supabaseClient = _ref.read(supabaseClientProvider);
-    _repository = CreditTransactionRepository(supabaseClient);
+    _repository = _ref.read(creditTransactionRepositoryProvider);
   }
 
   final Ref _ref;
@@ -183,6 +183,9 @@ class CreditSystemController extends StateNotifier<CreditSystemState> {
         entityName: entityName,
       );
       await loadBalances();
+
+      // Refresh cashbook totals
+      _ref.read(cashBookControllerProvider.notifier).refresh();
 
       // Refresh customer list if manufacturer transaction involved
       if (manufacturerId != null) {

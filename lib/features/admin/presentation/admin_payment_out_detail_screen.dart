@@ -11,6 +11,7 @@ import '../../../core/providers/supabase_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/number_to_words.dart';
 import '../application/manufacturer_controller.dart';
+import '../application/cash_book_controller.dart';
 import '../data/credit_transaction_repository.dart';
 import '../data/payment_out_pdf_service.dart';
 import '../data/purchase_order_repository_supabase.dart';
@@ -1063,6 +1064,10 @@ class _AdminPaymentOutDetailScreenState
         await ref
             .read(creditTransactionRepositoryProvider)
             .deleteCreditTransaction(widget.transaction.id);
+
+        // Refresh cashbook totals
+        ref.read(cashBookControllerProvider.notifier).refresh();
+
         if (mounted) {
           context.pop(true);
           ScaffoldMessenger.of(context).showSnackBar(

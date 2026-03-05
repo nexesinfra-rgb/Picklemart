@@ -98,8 +98,7 @@ class PurchaseOrderController extends StateNotifier<PurchaseOrderState> {
   static const int _poByNumberCacheMaxSize = 20;
 
   CreditTransactionRepository get _creditRepo {
-    final supabaseClient = _ref.read(supabaseClientProvider);
-    return CreditTransactionRepository(supabaseClient);
+    return _ref.read(creditTransactionRepositoryProvider);
   }
 
   String get _createdBy {

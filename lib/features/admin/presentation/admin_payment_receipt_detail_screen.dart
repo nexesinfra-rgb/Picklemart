@@ -12,6 +12,8 @@ import '../data/payment_receipt_repository.dart';
 import '../data/store_company_info.dart';
 import '../../orders/data/order_model.dart';
 import '../../orders/data/order_repository.dart';
+import '../application/cash_book_controller.dart';
+import '../application/admin_customer_controller.dart';
 
 class AdminPaymentReceiptDetailScreen extends ConsumerStatefulWidget {
   final PaymentReceipt receipt;
@@ -874,6 +876,12 @@ class _AdminPaymentReceiptDetailScreenState
       final repository = ref.read(paymentReceiptRepositoryProvider);
       final success = await repository.deletePaymentReceipt(receipt.id);
       if (success) {
+        // Refresh cashbook totals and customer balance
+        ref.read(cashBookControllerProvider.notifier).refresh();
+        try {
+          ref.read(adminCustomerControllerProvider.notifier).refresh();
+        } catch (_) {}
+        
         if (context.mounted) {
           context.pop(true);
           ScaffoldMessenger.of(context).showSnackBar(

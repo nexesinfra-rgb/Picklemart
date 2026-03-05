@@ -18,6 +18,9 @@ class CashBookEntry with _$CashBookEntry {
     required String description,
     @JsonKey(name: 'transaction_date') required DateTime date,
     @JsonKey(name: 'related_id') String? relatedId,
+    @JsonKey(name: 'reference_id') String? referenceId,
+    @JsonKey(name: 'reference_type') String? referenceType,
+    @JsonKey(name: 'link_id', includeIfNull: false) String? linkId,  // ID from payment_cashbook_links table
     @JsonKey(name: 'payment_method') required String paymentMethod,
     @JsonKey(name: 'created_by') required String createdBy,
     @JsonKey(name: 'created_at') DateTime? createdAt,

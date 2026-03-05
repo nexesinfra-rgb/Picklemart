@@ -21,6 +21,7 @@ import '../../orders/data/order_repository_provider.dart';
 import '../data/cash_book_repository.dart';
 import '../data/credit_transaction_repository.dart';
 import '../data/payment_receipt_repository.dart';
+import '../data/payment_cashbook_link_repository.dart';
 import '../data/purchase_order_repository_supabase.dart';
 import '../../orders/data/order_model.dart' as order_model;
 
@@ -1826,6 +1827,12 @@ class _AdminPaymentOutScreenState extends ConsumerState<AdminPaymentOutScreen> {
               .updatePurchaseOrder(updatedPO, skipSyncCredit: true);
         }
 
+        // Refresh cashbook totals and customer balance
+        ref.read(cashBookControllerProvider.notifier).refresh();
+        try {
+          ref.read(adminCustomerControllerProvider.notifier).refresh();
+        } catch (_) {}
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -2010,7 +2017,7 @@ class _AdminPaymentOutScreenState extends ConsumerState<AdminPaymentOutScreen> {
           // Create new transaction
 
           // 1. Create Credit Transaction
-          await ref
+          final newTransaction = await ref
               .read(creditTransactionRepositoryProvider)
               .createCreditTransaction(
                 manufacturerId: _selectedManufacturerId!,
@@ -2044,9 +2051,10 @@ class _AdminPaymentOutScreenState extends ConsumerState<AdminPaymentOutScreen> {
           }
 
           // 3. Record in Cash Book
+          debugPrint('DEBUG: Starting cashbook entry creation for amount: $amount, manufacturerId: $_selectedManufacturerId');
           try {
             // Use cashBookController.addEntry which handles refresh automatically
-            ref
+            await ref
                 .read(cashBookControllerProvider.notifier)
                 .addEntry(
                   CashBookEntry(
@@ -2059,12 +2067,38 @@ class _AdminPaymentOutScreenState extends ConsumerState<AdminPaymentOutScreen> {
                             : '$transactionDescription${_selectedOrderForPayment != null ? " for PO #${_selectedOrderForPayment!.purchaseNumber}" : (widget.purchaseOrder != null ? " for PO #${widget.purchaseOrder!.purchaseNumber}" : "")}',
                     date: _selectedDate,
                     relatedId: _selectedManufacturerId!,
+                    referenceId: newTransaction.id,
+                    referenceType: 'payment_out',
                     paymentMethod: _selectedPaymentType.dbValue,
                     createdBy: user.id,
                   ),
                 );
+            debugPrint('DEBUG: Cashbook entry created successfully');
+
+            // Refresh cashbook and dashboard after saving
+            try {
+              debugPrint('DEBUG: About to refresh cashbook controller');
+              ref.read(cashBookControllerProvider.notifier).refresh();
+              debugPrint('DEBUG: About to refresh dashboard controller');
+              ref.read(adminDashboardControllerProvider.notifier).refresh();
+              debugPrint('DEBUG: Both controllers refreshed');
+            } catch (e) {
+              debugPrint('DEBUG: Error refreshing cashbook/dashboard: $e');
+            }
+
+            // Final success message
+            debugPrint('DEBUG: Payment save flow completed successfully');
           } catch (e) {
-            // Ignore cash book error
+            debugPrint('DEBUG: Error adding to cash book: $e');
+            // Show error to user - don't silently swallow
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Error saving to cash book: $e'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
           }
         }
       } else {
@@ -2094,6 +2128,13 @@ class _AdminPaymentOutScreenState extends ConsumerState<AdminPaymentOutScreen> {
               description: description,
               createdBy: user.id,
             );
+
+        // Refresh cashbook after customer payment
+        try {
+          ref.read(cashBookControllerProvider.notifier).refresh();
+        } catch (e) {
+          debugPrint('Error refreshing cashbook after customer payment: $e');
+        }
       }
 
       // Refresh data (fire and forget)

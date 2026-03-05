@@ -1,12 +1,20 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/supabase_provider.dart';
+import '../data/cash_book_repository.dart';
+import '../data/payment_cashbook_link_repository.dart';
 import '../domain/credit_transaction.dart';
 
 class CreditTransactionRepository {
   final SupabaseClient _supabase;
+  final CashBookRepository? _cashBookRepository;
+  final PaymentCashbookLinkRepository? _linkRepository;
 
-  CreditTransactionRepository(this._supabase);
+  CreditTransactionRepository(
+    this._supabase, [
+    this._cashBookRepository,
+    this._linkRepository,
+  ]);
 
   /// Get all credit transactions with optional filters and pagination
   Future<List<CreditTransaction>> getCreditTransactions({
@@ -425,19 +433,67 @@ class CreditTransactionRepository {
   /// Delete a credit transaction
   Future<void> deleteCreditTransaction(String id) async {
     try {
-      // Get transaction details first to know which entity to recalculate
+      // Get transaction details first to know which entity to recalculate and for legacy cashbook cleanup
       final response =
           await _supabase
               .from('credit_transactions')
-              .select('manufacturer_id, entity_name')
+              .select()
               .eq('id', id)
               .single();
 
       final manufacturerId = response['manufacturer_id'] as String?;
       final entityName = response['entity_name'] as String?;
+      final amount = (response['amount'] as num).toDouble();
+      final transactionDate = DateTime.parse(
+        response['transaction_date'] as String,
+      );
 
       // Delete the transaction
       await _supabase.from('credit_transactions').delete().eq('id', id);
+
+      // Delete from Cash Book (cascade via link if available)
+      if (_linkRepository != null) {
+        try {
+          await _linkRepository.deleteByPaymentId(id, 'payment_out');
+        } catch (e) {
+          // Link delete failed, continue to direct deletion
+          if (_cashBookRepository != null) {
+            try {
+              final deletedCount = await _cashBookRepository!.deleteEntryByReference(id, 'payment_out');
+              
+              // If nothing deleted by reference, try fuzzy match (for legacy entries or where reference was lost)
+              if (deletedCount == 0 && manufacturerId != null) {
+                print('DEBUG: Fallback to fuzzy delete for credit transaction');
+                await _cashBookRepository!.deleteEntryByFuzzyMatch(
+                  relatedId: manufacturerId,
+                  amount: amount,
+                  date: transactionDate,
+                );
+              }
+            } catch (e) {
+              print('Error syncing with cash book: $e');
+            }
+          }
+        }
+      } else if (_cashBookRepository != null) {
+        try {
+          // Delete using referenceId and referenceType for precise matching
+          final deletedCount = await _cashBookRepository!.deleteEntryByReference(id, 'payment_out');
+          
+          // If nothing deleted by reference, try fuzzy match (for legacy entries or where reference was lost)
+          if (deletedCount == 0 && manufacturerId != null) {
+            print('DEBUG: Fallback to fuzzy delete for credit transaction');
+            await _cashBookRepository!.deleteEntryByFuzzyMatch(
+              relatedId: manufacturerId,
+              amount: amount,
+              date: transactionDate,
+            );
+          }
+        } catch (e) {
+          // Ignore error to ensure transaction deletion succeeds even if cashbook sync fails
+          print('Error syncing with cash book: $e');
+        }
+      }
 
       // Recalculate balances
       if (manufacturerId != null) {
@@ -513,5 +569,7 @@ class CreditTransactionRepository {
 final creditTransactionRepositoryProvider =
     Provider<CreditTransactionRepository>((ref) {
       final supabase = ref.watch(supabaseClientProvider);
-      return CreditTransactionRepository(supabase);
+      final cashBookRepo = ref.watch(cashBookRepositoryProvider);
+      final linkRepo = ref.watch(paymentCashbookLinkRepositoryProvider);
+      return CreditTransactionRepository(supabase, cashBookRepo, linkRepo);
     });

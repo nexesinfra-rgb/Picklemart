@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/providers/supabase_provider.dart';
 import 'cash_book_repository.dart';
+import 'payment_cashbook_link_repository.dart';
 import '../domain/cash_book_entry.dart';
 
 class PaymentReceipt {
@@ -97,8 +98,13 @@ class PaymentReceipt {
 class PaymentReceiptRepository {
   final SupabaseClient _supabase;
   final CashBookRepository? _cashBookRepository;
+  final PaymentCashbookLinkRepository? _linkRepository;
 
-  PaymentReceiptRepository(this._supabase, [this._cashBookRepository]);
+  PaymentReceiptRepository(
+    this._supabase, [
+    this._cashBookRepository,
+    this._linkRepository,
+  ]);
 
   /// Get total paid amount for an order
   Future<double> getTotalPaidForOrder(String orderId) async {
@@ -430,23 +436,47 @@ class PaymentReceiptRepository {
           final isRefund =
               description != null && description.startsWith('REFUND:');
 
-          await _cashBookRepository.addEntry(
-            CashBookEntry(
-              amount: amount,
-              type:
-                  isRefund ? CashBookEntryType.payout : CashBookEntryType.payin,
-              category: isRefund ? 'Customer Refund' : 'Order Payment',
-              description: description ?? 'Payment Receipt $receiptNumber',
-              date: paymentDate,
-              relatedId: response['id'],
-              paymentMethod: paymentType,
-              createdBy: createdBy,
-            ),
+          final cashBookEntry = CashBookEntry(
+            amount: amount,
+            type:
+                isRefund ? CashBookEntryType.payout : CashBookEntryType.payin,
+            category: isRefund ? 'Customer Refund' : 'Order Payment',
+            description: description ?? 'Payment Receipt $receiptNumber',
+            date: paymentDate,
+            relatedId: response['id'],
+            referenceId: response['id'],
+            referenceType: 'payment_in',
+            paymentMethod: paymentType,
+            createdBy: createdBy,
           );
-        } catch (e) {
-          if (kDebugMode) {
-            print('Error adding to cash book: $e');
+
+          await _cashBookRepository.addEntry(cashBookEntry);
+
+          // Create link between payment and cashbook entry
+          if (_linkRepository != null) {
+            try {
+              final entry = await _cashBookRepository.getEntryByReference(
+                response['id'],
+                'payment_in',
+              );
+              if (entry != null && entry.id != null) {
+                await _linkRepository.createLink(
+                  paymentId: response['id'],
+                  paymentType: 'payment_in',
+                  cashBookEntryId: entry.id!,
+                );
+              }
+            } catch (e) {
+              if (kDebugMode) {
+                print('Error creating payment-cashbook link: $e');
+              }
+            }
           }
+        } catch (e) {
+          // Always print error - not just debug mode
+          print('ERROR: Error adding to cash book: $e');
+          // Re-throw so caller knows it failed
+          rethrow;
         }
       }
 
@@ -616,24 +646,63 @@ class PaymentReceiptRepository {
   /// Delete a payment receipt
   Future<bool> deletePaymentReceipt(String id) async {
     try {
-      await _supabase.from('payment_receipts').delete().eq('id', id);
+      // Get receipt details first for fallback deletion
+      double? amount;
+      DateTime? paymentDate;
+      String? customerId;
+      
+      try {
+        final receipt = await _supabase
+            .from('payment_receipts')
+            .select('amount, payment_date, customer_id')
+            .eq('id', id)
+            .maybeSingle();
+            
+        if (receipt != null) {
+          amount = (receipt['amount'] as num).toDouble();
+          paymentDate = DateTime.parse(receipt['payment_date'] as String);
+          customerId = receipt['customer_id'] as String;
+        }
+      } catch (e) {
+        print('Warning: Could not fetch receipt details for deletion: $e');
+      }
 
-      // Also delete from Cash Book
+      // First delete linked cashbook entry (cascade delete) if link repository is available
+      if (_linkRepository != null) {
+        try {
+          await _linkRepository.deleteByPaymentId(id, 'payment_in');
+        } catch (e) {
+          // Link delete failed, continue to direct deletion
+          print('INFO: Link delete failed, trying direct delete: $e');
+        }
+      }
+      
+      // Always try direct deletion as fallback
       if (_cashBookRepository != null) {
         try {
-          await _cashBookRepository.deleteEntryByRelatedId(id);
-        } catch (e) {
-          if (kDebugMode) {
-            print('Error deleting from cash book: $e');
+          final deletedCount = await _cashBookRepository!.deleteEntryByReference(id, 'payment_in');
+          print('INFO: Deleted cashbook entry for payment: $id, count: $deletedCount');
+          
+          // If nothing deleted by reference, try fuzzy match using customer ID
+          if (deletedCount == 0 && amount != null && paymentDate != null && customerId != null) {
+             print('DEBUG: Fallback to fuzzy delete for payment receipt');
+             await _cashBookRepository!.deleteEntryByFuzzyMatch(
+               relatedId: customerId,
+               amount: amount,
+               date: paymentDate,
+             );
           }
+        } catch (e) {
+          print('ERROR: Failed to delete from cash book: $e');
         }
       }
 
+      // Delete the payment receipt
+      await _supabase.from('payment_receipts').delete().eq('id', id);
+
       return true;
     } catch (e) {
-      if (kDebugMode) {
-        print('Error deleting payment receipt: $e');
-      }
+      print('ERROR: Error deleting payment receipt: $e');
       return false;
     }
   }
@@ -644,5 +713,6 @@ final paymentReceiptRepositoryProvider = Provider<PaymentReceiptRepository>((
 ) {
   final supabase = ref.watch(supabaseClientProvider);
   final cashBookRepo = ref.watch(cashBookRepositoryProvider);
-  return PaymentReceiptRepository(supabase, cashBookRepo);
+  final linkRepo = ref.watch(paymentCashbookLinkRepositoryProvider);
+  return PaymentReceiptRepository(supabase, cashBookRepo, linkRepo);
 });

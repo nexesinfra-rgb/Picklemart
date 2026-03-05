@@ -17,6 +17,7 @@ import '../domain/credit_transaction.dart';
 import '../domain/purchase_order.dart';
 import '../application/manufacturer_controller.dart';
 import '../application/purchase_order_controller.dart';
+import '../application/cash_book_controller.dart';
 import 'widgets/admin_auth_guard.dart';
 
 class _TransactionItem {
@@ -485,6 +486,9 @@ class _AdminPaymentOutListScreenState
         await ref
             .read(creditTransactionRepositoryProvider)
             .deleteCreditTransaction(ct.id);
+
+        // Refresh cashbook totals
+        ref.read(cashBookControllerProvider.notifier).refresh();
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(

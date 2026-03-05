@@ -18,6 +18,8 @@ import '../application/credit_system_controller.dart';
 import '../domain/credit_transaction.dart';
 import '../data/payment_receipt_repository.dart';
 import '../data/credit_transaction_repository.dart';
+import '../application/cash_book_controller.dart';
+import '../domain/cash_book_entry.dart';
 
 class AdminDashboardScreen extends ConsumerStatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -1762,7 +1764,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                             method = PaymentMethod.other;
                         }
 
-                        await ref
+                        final newTransaction = await ref
                             .read(creditTransactionRepositoryProvider)
                             .createCreditTransaction(
                               manufacturerId: party.id,
@@ -1779,6 +1781,29 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                               paymentMethod: method,
                               description: descriptionController.text,
                               transactionDate: selectedDate,
+                            );
+
+                        // Record in Cash Book
+                        await ref
+                            .read(cashBookControllerProvider.notifier)
+                            .addEntry(
+                              CashBookEntry(
+                                amount: amount,
+                                type: CashBookEntryType.payout,
+                                category: 'Manufacturer Payment',
+                                description: descriptionController.text,
+                                date: selectedDate,
+                                relatedId: party.id,
+                                referenceId: newTransaction.id,
+                                referenceType: 'payment_out',
+                                paymentMethod: method.toDatabaseValue(),
+                                createdBy:
+                                    ref
+                                        .read(adminAuthControllerProvider)
+                                        .adminUser
+                                        ?.id ??
+                                    '',
+                              ),
                             );
                       }
 

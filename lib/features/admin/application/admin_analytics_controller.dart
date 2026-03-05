@@ -6,7 +6,7 @@ import '../data/analytics_provider.dart';
 import '../../orders/data/shared_orders_provider.dart';
 import '../../orders/data/order_model.dart';
 import '../data/shared_customers_provider.dart';
-import '../application/admin_customer_controller.dart';
+import 'admin_customer_controller.dart';
 import '../../catalog/data/shared_product_provider.dart';
 import '../../catalog/data/product.dart';
 import '../../orders/data/order_repository_provider.dart';

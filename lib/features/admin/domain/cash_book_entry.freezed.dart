@@ -32,6 +32,12 @@ mixin _$CashBookEntry {
   DateTime get date => throw _privateConstructorUsedError;
   @JsonKey(name: 'related_id')
   String? get relatedId => throw _privateConstructorUsedError;
+  @JsonKey(name: 'reference_id')
+  String? get referenceId => throw _privateConstructorUsedError;
+  @JsonKey(name: 'reference_type')
+  String? get referenceType => throw _privateConstructorUsedError;
+  @JsonKey(name: 'link_id', includeIfNull: false)
+  String? get linkId => throw _privateConstructorUsedError; // ID from payment_cashbook_links table
   @JsonKey(name: 'payment_method')
   String get paymentMethod => throw _privateConstructorUsedError;
   @JsonKey(name: 'created_by')
@@ -64,6 +70,9 @@ abstract class $CashBookEntryCopyWith<$Res> {
     String description,
     @JsonKey(name: 'transaction_date') DateTime date,
     @JsonKey(name: 'related_id') String? relatedId,
+    @JsonKey(name: 'reference_id') String? referenceId,
+    @JsonKey(name: 'reference_type') String? referenceType,
+    @JsonKey(name: 'link_id', includeIfNull: false) String? linkId,
     @JsonKey(name: 'payment_method') String paymentMethod,
     @JsonKey(name: 'created_by') String createdBy,
     @JsonKey(name: 'created_at') DateTime? createdAt,
@@ -92,6 +101,9 @@ class _$CashBookEntryCopyWithImpl<$Res, $Val extends CashBookEntry>
     Object? description = null,
     Object? date = null,
     Object? relatedId = freezed,
+    Object? referenceId = freezed,
+    Object? referenceType = freezed,
+    Object? linkId = freezed,
     Object? paymentMethod = null,
     Object? createdBy = null,
     Object? createdAt = freezed,
@@ -133,6 +145,21 @@ class _$CashBookEntryCopyWithImpl<$Res, $Val extends CashBookEntry>
                     ? _value.relatedId
                     : relatedId // ignore: cast_nullable_to_non_nullable
                         as String?,
+            referenceId:
+                freezed == referenceId
+                    ? _value.referenceId
+                    : referenceId // ignore: cast_nullable_to_non_nullable
+                        as String?,
+            referenceType:
+                freezed == referenceType
+                    ? _value.referenceType
+                    : referenceType // ignore: cast_nullable_to_non_nullable
+                        as String?,
+            linkId:
+                freezed == linkId
+                    ? _value.linkId
+                    : linkId // ignore: cast_nullable_to_non_nullable
+                        as String?,
             paymentMethod:
                 null == paymentMethod
                     ? _value.paymentMethod
@@ -171,6 +198,9 @@ abstract class _$$CashBookEntryImplCopyWith<$Res>
     String description,
     @JsonKey(name: 'transaction_date') DateTime date,
     @JsonKey(name: 'related_id') String? relatedId,
+    @JsonKey(name: 'reference_id') String? referenceId,
+    @JsonKey(name: 'reference_type') String? referenceType,
+    @JsonKey(name: 'link_id', includeIfNull: false) String? linkId,
     @JsonKey(name: 'payment_method') String paymentMethod,
     @JsonKey(name: 'created_by') String createdBy,
     @JsonKey(name: 'created_at') DateTime? createdAt,
@@ -198,6 +228,9 @@ class __$$CashBookEntryImplCopyWithImpl<$Res>
     Object? description = null,
     Object? date = null,
     Object? relatedId = freezed,
+    Object? referenceId = freezed,
+    Object? referenceType = freezed,
+    Object? linkId = freezed,
     Object? paymentMethod = null,
     Object? createdBy = null,
     Object? createdAt = freezed,
@@ -239,6 +272,21 @@ class __$$CashBookEntryImplCopyWithImpl<$Res>
                 ? _value.relatedId
                 : relatedId // ignore: cast_nullable_to_non_nullable
                     as String?,
+        referenceId:
+            freezed == referenceId
+                ? _value.referenceId
+                : referenceId // ignore: cast_nullable_to_non_nullable
+                    as String?,
+        referenceType:
+            freezed == referenceType
+                ? _value.referenceType
+                : referenceType // ignore: cast_nullable_to_non_nullable
+                    as String?,
+        linkId:
+            freezed == linkId
+                ? _value.linkId
+                : linkId // ignore: cast_nullable_to_non_nullable
+                    as String?,
         paymentMethod:
             null == paymentMethod
                 ? _value.paymentMethod
@@ -270,6 +318,9 @@ class _$CashBookEntryImpl implements _CashBookEntry {
     required this.description,
     @JsonKey(name: 'transaction_date') required this.date,
     @JsonKey(name: 'related_id') this.relatedId,
+    @JsonKey(name: 'reference_id') this.referenceId,
+    @JsonKey(name: 'reference_type') this.referenceType,
+    @JsonKey(name: 'link_id', includeIfNull: false) this.linkId,
     @JsonKey(name: 'payment_method') required this.paymentMethod,
     @JsonKey(name: 'created_by') required this.createdBy,
     @JsonKey(name: 'created_at') this.createdAt,
@@ -297,6 +348,16 @@ class _$CashBookEntryImpl implements _CashBookEntry {
   @JsonKey(name: 'related_id')
   final String? relatedId;
   @override
+  @JsonKey(name: 'reference_id')
+  final String? referenceId;
+  @override
+  @JsonKey(name: 'reference_type')
+  final String? referenceType;
+  @override
+  @JsonKey(name: 'link_id', includeIfNull: false)
+  final String? linkId;
+  // ID from payment_cashbook_links table
+  @override
   @JsonKey(name: 'payment_method')
   final String paymentMethod;
   @override
@@ -308,7 +369,7 @@ class _$CashBookEntryImpl implements _CashBookEntry {
 
   @override
   String toString() {
-    return 'CashBookEntry(id: $id, amount: $amount, type: $type, category: $category, description: $description, date: $date, relatedId: $relatedId, paymentMethod: $paymentMethod, createdBy: $createdBy, createdAt: $createdAt)';
+    return 'CashBookEntry(id: $id, amount: $amount, type: $type, category: $category, description: $description, date: $date, relatedId: $relatedId, referenceId: $referenceId, referenceType: $referenceType, linkId: $linkId, paymentMethod: $paymentMethod, createdBy: $createdBy, createdAt: $createdAt)';
   }
 
   @override
@@ -326,6 +387,11 @@ class _$CashBookEntryImpl implements _CashBookEntry {
             (identical(other.date, date) || other.date == date) &&
             (identical(other.relatedId, relatedId) ||
                 other.relatedId == relatedId) &&
+            (identical(other.referenceId, referenceId) ||
+                other.referenceId == referenceId) &&
+            (identical(other.referenceType, referenceType) ||
+                other.referenceType == referenceType) &&
+            (identical(other.linkId, linkId) || other.linkId == linkId) &&
             (identical(other.paymentMethod, paymentMethod) ||
                 other.paymentMethod == paymentMethod) &&
             (identical(other.createdBy, createdBy) ||
@@ -345,6 +411,9 @@ class _$CashBookEntryImpl implements _CashBookEntry {
     description,
     date,
     relatedId,
+    referenceId,
+    referenceType,
+    linkId,
     paymentMethod,
     createdBy,
     createdAt,
@@ -373,6 +442,9 @@ abstract class _CashBookEntry implements CashBookEntry {
     required final String description,
     @JsonKey(name: 'transaction_date') required final DateTime date,
     @JsonKey(name: 'related_id') final String? relatedId,
+    @JsonKey(name: 'reference_id') final String? referenceId,
+    @JsonKey(name: 'reference_type') final String? referenceType,
+    @JsonKey(name: 'link_id', includeIfNull: false) final String? linkId,
     @JsonKey(name: 'payment_method') required final String paymentMethod,
     @JsonKey(name: 'created_by') required final String createdBy,
     @JsonKey(name: 'created_at') final DateTime? createdAt,
@@ -399,6 +471,15 @@ abstract class _CashBookEntry implements CashBookEntry {
   @override
   @JsonKey(name: 'related_id')
   String? get relatedId;
+  @override
+  @JsonKey(name: 'reference_id')
+  String? get referenceId;
+  @override
+  @JsonKey(name: 'reference_type')
+  String? get referenceType;
+  @override
+  @JsonKey(name: 'link_id', includeIfNull: false)
+  String? get linkId; // ID from payment_cashbook_links table
   @override
   @JsonKey(name: 'payment_method')
   String get paymentMethod;

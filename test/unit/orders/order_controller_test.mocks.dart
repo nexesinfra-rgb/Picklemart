@@ -187,4 +187,12 @@ class MockOrderRepository extends _i1.Mock implements _i3.OrderRepository {
             ),
           )
           as _i4.Future<Map<String, dynamic>>);
+
+  @override
+  _i4.Stream<void> subscribeToUserOrders() =>
+      (super.noSuchMethod(
+            Invocation.method(#subscribeToUserOrders, []),
+            returnValue: _i4.Stream<void>.empty(),
+          )
+          as _i4.Stream<void>);
 }
