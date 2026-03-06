@@ -1008,7 +1008,7 @@ class _AdminPurchaseOrderFormScreenState
                                         return null;
                                       },
                                       decoration: InputDecoration(
-                                        labelText: 'Transport Name',
+                                        labelText: 'Name',
                                         border: OutlineInputBorder(
                                           borderRadius: BorderRadius.circular(
                                             12,
@@ -1036,15 +1036,6 @@ class _AdminPurchaseOrderFormScreenState
                                     TextFormField(
                                       initialValue: _transportationPhone,
                                       validator: (value) {
-                                        if (value == null ||
-                                            value.trim().isEmpty) {
-                                          return 'Please enter transport phone';
-                                        }
-                                        if (!RegExp(
-                                          r'^\d{10}$',
-                                        ).hasMatch(value)) {
-                                          return 'Please enter a valid 10-digit phone number';
-                                        }
                                         return null;
                                       },
                                       inputFormatters: [

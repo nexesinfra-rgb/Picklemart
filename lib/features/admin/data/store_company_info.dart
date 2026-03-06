@@ -7,7 +7,7 @@ class StoreCompanyInfo {
   static const String city = 'Eluru';
   static const String state = '37-Andhra Pradesh';
   static const String pincode = '534002';
-  static const String fssaiNo = '20122111000068';
+  static const String fssaiNo = '10124005000121';
   static const String gst = '';
 
   /// Get company info as a map for bill data
